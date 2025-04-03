@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>High Tide Alert</title>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 400px; /* Tăng chiều rộng để chứa biểu đồ */
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    .date {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .tide-chart {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="tide-info"></div>
+  <canvas id="tideChart" class="tide-chart"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Thêm Chart.js -->
+  <script src="popup.js"></script>
+</body>
+</html>

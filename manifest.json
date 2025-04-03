@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "High Tide Alert",
+  "version": "1.0",
+  "description": "Display tide information for Saigon",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://thegioimoicau.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "64": "icon64.png"
+    }
+  },
+  "icons": {
+    "64": "icon64.png"
+  }
+}
