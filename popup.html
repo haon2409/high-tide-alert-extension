@@ -1,27 +1,126 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>High Tide Alert</title>
   <meta charset="UTF-8">
   <style>
     body {
-      width: 400px; /* Tăng chiều rộng để chứa biểu đồ */
-      padding: 10px;
+      width: 400px;
+      padding: 15px;
       font-family: Arial, sans-serif;
+      background-color: #F5F5F5;
+      font-weight: bold;
     }
+
     .date {
       font-weight: bold;
-      margin-top: 10px;
+      margin-top: 15px;
+      font-size: 17px;
     }
+
     .tide-chart {
       margin-top: 10px;
+      margin-bottom: 20px;
     }
+
+    #threshold-container,
+    #hours-container {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      font-size: 17px;
+    }
+
+    /* 16px * 1.2 */
+    #threshold-input {
+      width: 60px;
+      margin-right: 10px;
+      padding: 3px;
+      font-size: 17px;
+    }
+
+    #threshold-summary {
+      margin-right: 10px;
+      color: #ff0000;
+    }
+
+    #hours-summary {
+      color: #0066CC; /* Vàng */
+      -webkit-text-stroke: 1px black; /* Viền đen */
+      font-weight: bold;
+    }
+
+    #edit-btn,
+    #save-btn,
+    #cancel-btn {
+      margin-right: 5px;
+      padding: 3px 8px;
+    }
+
+    #threshold-input[disabled] {
+      background-color: #e0e0e0;
+    }
+
+    #hours-container label {
+      margin-right: 5px;
+      font-size: 14.4px;
+    }
+
+    /* 12px * 1.2 */
+    #hours-container input[disabled] {
+      cursor: not-allowed;
+    }
+
+    #hours-summary {
+      margin-left: 5px;
+    }
+
+    #hours-checkboxes {
+      display: none;
+    }
+
+    button {
+      background-color: #e0e0e0;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #d0d0d0;
+    }
+
+    #edit-btn {
+      padding: 2px 6px;
+      font-size: 17px;
+    }
+
+    .date-value {
+      color: #0066CC;
+    }
+
+    /* Màu tím */
   </style>
 </head>
+
 <body>
+  <div id="threshold-container">
+    <label>Ngưỡng nguy hiểm:&nbsp;</label>
+    <span id="threshold-summary"> <span id="threshold-value"></span>m</span>
+    <input type="number" id="threshold-input" step="0.1" disabled style="display: none;">
+    <button id="edit-btn">⚙️</button>
+    <button id="save-btn" style="display: none;">Save</button>
+    <button id="cancel-btn" style="display: none;">Cancel</button>
+  </div>
+  <div id="hours-container">
+    <label>Giờ kiểm tra: </label>
+    <span id="hours-summary"></span>
+    <div id="hours-checkboxes"></div>
+  </div>
   <div id="tide-info"></div>
-  <canvas id="tideChart" class="tide-chart"></canvas>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Thêm Chart.js -->
+  <script src="chart.js"></script>
   <script src="popup.js"></script>
 </body>
+
 </html>
