@@ -8,8 +8,8 @@
     body {
       width: 400px;
       padding: 20px;
-      font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+      font-family: 'Roboto', sans-serif;      
+      background: linear-gradient(135deg, #e0f7fa 0%, #499f7b 100%);
       color: #333;
       border-radius: 10px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -140,7 +140,7 @@
     <input type="number" id="threshold-input" step="0.1" disabled style="display: none;">
     <button id="edit-btn">⚙️</button>
     <button id="save-btn" style="display: none;">Lưu</button>
-    <button id="cancel-btn" style="display: none;">Hủy</button>
+    <button id="cancel-btn" style="display: none; margin-left: 10px;">Hủy</button>
   </div>
   <div id="hours-container">
     <label>Giờ kiểm tra: </label>
@@ -149,6 +149,7 @@
   </div>
   <div id="tide-info"></div>
   <script src="chart.js"></script>
-  <script src="popup.js"></script>
+  <script src="chartjs-plugin-annotation.min.js"></script>
+  <script src="popup.js"></script>  
 </body>
 </html>

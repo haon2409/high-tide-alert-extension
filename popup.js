@@ -150,17 +150,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
           });
           if (date && tideData.length > 0) {
-            const dateDiv = document.createElement('div');
-            dateDiv.className = 'date';
-            dateDiv.innerHTML = `<span class="date-value">${date}</span>:`;
-            tideInfo.appendChild(dateDiv);
+            // Chuyển đổi định dạng ngày
+            const [day, month, year] = date.split('/'); // Tách ngày, tháng, năm
+            const dateObj = new Date(`${year}-${month}-${day}`); // Tạo đối tượng Date
+            const weekday = dateObj.toLocaleDateString('vi-VN', { weekday: 'long' }); // Lấy tên ngày (ví dụ: "Thứ Năm")
+            const formattedDate = `${weekday}, ${date}:`; // Kết hợp: "Thứ Năm, 03/04/2025:"
 
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'date';            
+            dateDiv.innerHTML = `<span class="date-value">${formattedDate}</span>`;
+            tideInfo.appendChild(dateDiv);
+  
             const labels = [], data = [];
             for (let i = 0; i < tideData.length - 1; i += 2) {
               labels.push(tideData[i]);
               data.push(parseFloat(tideData[i + 1]));
             }
-
+  
             const currentHour = new Date().getHours();
             const barColors = data.map((level, idx) => {
               const hour = parseInt(labels[idx].replace('h', ''));
@@ -170,18 +176,53 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               return baseColor;
             });
-
+  
             const canvas = document.createElement('canvas');
             canvas.id = `tideChart-${index}`;
             canvas.className = 'tide-chart';
             tideInfo.appendChild(canvas);
-
+  
             new Chart(canvas.getContext('2d'), {
               type: 'bar',
-              data: { labels, datasets: [{ label: 'Mực nước (m)', data, backgroundColor: barColors, borderColor: barColors, borderWidth: 1 }] },
+              data: {
+                labels,
+                datasets: [{
+                  label: 'Mực nước (m)',
+                  data,
+                  backgroundColor: barColors,
+                  borderColor: barColors,
+                  borderWidth: 1
+                }]
+              },
               options: {
-                scales: { x: { title: { display: true, text: 'Thời gian' } }, y: { beginAtZero: true, title: { display: true, text: 'Mực nước (m)' } } },
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${context.parsed.y}m` } } }
+                scales: {
+                  x: { title: { display: true, text: 'Thời gian' } },
+                  y: { beginAtZero: true, title: { display: true, text: 'Mực nước (m)' } }
+                },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { callbacks: { label: context => `${context.parsed.y}m` } },
+                  annotation: { // Thêm đường ngang cho ngưỡng
+                    annotations: {
+                      thresholdLine: {
+                        type: 'line',
+                        yMin: threshold, // Giá trị ngưỡng từ localStorage
+                        yMax: threshold,
+                        borderColor: '#d32f2f', // Màu đỏ
+                        borderWidth: 2,
+                        borderDash: [5, 5], // Đường nét đứt
+                        label: {
+                          enabled: true,
+                          content: `Ngưỡng: ${threshold}m`,
+                          position: 'end',
+                          backgroundColor: 'rgba(211, 47, 47, 0.8)',
+                          color: '#fff',
+                          padding: 4
+                        }
+                      }
+                    }
+                  }
+                }
               }
             });
           }
@@ -232,9 +273,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const badgeText = redDays.length ? redDays.join('') : '';
         chrome.action.setBadgeText({ text: badgeText });
         if (currentHourExceedsThreshold || !badgeText) {
-          chrome.action.setBadgeBackgroundColor({ color: '#000000' });
-        } else {
           chrome.action.setBadgeBackgroundColor({ color: '#CC0000' });
+        } else {
+          chrome.action.setBadgeBackgroundColor({ color: '#000000' });
         }
       });
   }
