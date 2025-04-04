@@ -7,11 +7,21 @@
   "host_permissions": ["https://thegioimoicau.com/*"],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": {"64": "icon64.png"}
+    "default_icon": {
+      "64": "icon64.png"
+    }
   },
-  "icons": {"64": "icon64.png"},
-  "background": {"service_worker": "background.js"},
-  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'self'"},
+  "icons": {
+    "64": "icon64.png",
+    "64": "icon64_red.png",
+    "64": "icon64_yellow.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "web_accessible_resources": [
     {
       "resources": ["chart.js"],

@@ -34,7 +34,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
-    #threshold-container, #hours-container {
+    #threshold-container, #threshold2-container, #hours-container {
       margin-bottom: 20px;
       display: flex;
       align-items: center;
@@ -45,7 +45,7 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     }
 
-    #threshold-input {
+    #threshold-input, #threshold2-input {
       width: 60px;
       margin-right: 10px;
       padding: 5px;
@@ -55,7 +55,7 @@
       transition: border-color 0.3s;
     }
 
-    #threshold-input:focus {
+    #threshold-input:focus, #threshold2-input:focus {
       border-color: #0288d1;
       outline: none;
     }
@@ -63,6 +63,12 @@
     #threshold-summary {
       margin-right: 10px;
       color: #d32f2f;
+      font-weight: 700;
+    }
+
+    #threshold2-summary {
+      margin-right: 10px;
+      color: #ff8f00;
       font-weight: 700;
     }
 
@@ -120,7 +126,7 @@
       background: #e1f5fe;
     }
 
-    #threshold-input[disabled], #hours-container input[disabled] {
+    #threshold-input[disabled], #threshold2-input[disabled], #hours-container input[disabled] {
       background: #f5f5f5;
       cursor: not-allowed;
     }
@@ -142,6 +148,11 @@
     <button id="save-btn" style="display: none;">Lưu</button>
     <button id="cancel-btn" style="display: none; margin-left: 10px;">Hủy</button>
   </div>
+  <div id="threshold2-container">
+    <label>Ngưỡng nguy hiểm 2:&nbsp;</label>
+    <span id="threshold2-summary"><span id="threshold2-value"></span>m</span>
+    <input type="number" id="threshold2-input" step="0.1" disabled style="display: none;">
+  </div>
   <div id="hours-container">
     <label>Giờ kiểm tra: </label>
     <span id="hours-summary"></span>
@@ -151,5 +162,5 @@
   <script src="chart.js"></script>
   <script src="chartjs-plugin-annotation.min.js"></script>
   <script src="popup.js"></script>  
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92ae5b6cef13b0a9',t:'MTc0Mzc0NDAzMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

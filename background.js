@@ -15,12 +15,13 @@ function updateBadge() {
       const doc = parser.parseFromString(html, 'text/html');
       const tables = Array.from(doc.querySelectorAll('table.table-striped')).slice(0, 3);
       const threshold = parseFloat(localStorage.getItem('tideThreshold') || 1.5);
+      const threshold2 = parseFloat(localStorage.getItem('tideThreshold2') || 2.0);
       const selectedHours = JSON.parse(localStorage.getItem('selectedHours') || JSON.stringify([...Array(24).keys()]));
       const currentHour = new Date().getHours();
       const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
 
       let redDays = [];
-      let currentHourExceedsThreshold = false;
+      let currentHourLevel = null;
 
       tables.forEach((table, idx) => {
         const tideData = [];
@@ -36,18 +37,33 @@ function updateBadge() {
           if (selectedHours.includes(hour) && level >= threshold) {
             if (redDays.indexOf(idx + 1) === -1) redDays.push(idx + 1);
           }
-          if (idx === 0 && date === today && hour === currentHour && level >= threshold) {
-            currentHourExceedsThreshold = true;
+          if (idx === 0 && date === today && hour === currentHour) {
+            currentHourLevel = level;
           }
         }
       });
 
-      const badgeText = redDays.length ? redDays.join('') : '';
-      chrome.action.setBadgeText({ text: badgeText });
-      if (currentHourExceedsThreshold || !badgeText) {
-        chrome.action.setBadgeBackgroundColor({ color: '#000000' });
+      // Logic badge mới
+      if (redDays.length > 0) {
+        const badgeText = redDays.join('');
+        chrome.action.setBadgeText({ text: badgeText });
+        chrome.action.setBadgeBackgroundColor({ color: '#FF0000' }); // Nền đỏ
+        chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
       } else {
-        chrome.action.setBadgeBackgroundColor({ color: '#CC0000' });
+        chrome.action.setBadgeText({ text: '' }); // Không hiển thị badge
+      }
+
+      // Cập nhật icon dựa trên giờ hiện tại trong biểu đồ đầu tiên
+      if (currentHourLevel !== null) {
+        if (currentHourLevel >= threshold) {
+          chrome.action.setIcon({ path: 'icon64_red.png' });
+        } else if (currentHourLevel >= threshold2) {
+          chrome.action.setIcon({ path: 'icon64_yellow.png' });
+        } else {
+          chrome.action.setIcon({ path: 'icon64.png' });
+        }
+      } else {
+        chrome.action.setIcon({ path: 'icon64.png' });
       }
     });
 }
