@@ -192,16 +192,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentHour = new Date().getHours();
             const barColors = data.map((level, idx) => {
               const hour = parseInt(labels[idx].replace('h', ''));
-              let baseColor = 'rgba(128, 128, 128, 1)'; // Mặc định: xám
+              let baseColor = 'rgba(54, 162, 235, 1)'; // Xanh: Không vượt ngưỡng
               
-              if (selectedHours.includes(hour)) {
-                baseColor = 'rgba(54, 162, 235, 1)'; // Trong giờ kiểm tra: xanh
-              }
               if (level >= threshold2) {
-                baseColor = 'rgba(255, 215, 0, 1)'; // Vượt ngưỡng 2: vàng
+                baseColor = 'rgba(255, 215, 0, 1)'; // Vàng: Vượt ngưỡng 2
               }
               if (level >= threshold && selectedHours.includes(hour)) {
-                baseColor = 'rgba(255, 0, 0, 1)'; // Vượt ngưỡng 1 và trong giờ kiểm tra: đỏ
+                baseColor = 'rgba(255, 0, 0, 1)'; // Đỏ: Vượt ngưỡng 1 và trong giờ kiểm tra
               }
 
               if (index === 0 && hour === currentHour) {
