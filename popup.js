@@ -46,360 +46,363 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   const hoursCheckboxes = Array.from(document.querySelectorAll('#hours-checkboxes input[type="checkbox"]'));
 
-  let threshold = localStorage.getItem('tideThreshold') ? parseFloat(localStorage.getItem('tideThreshold')) : 1.5;
-  let originalThreshold = threshold;
-  thresholdInput.value = threshold;
-  thresholdValue.textContent = threshold.toString().replace('.', ',');
-  
-  let threshold2 = localStorage.getItem('tideThreshold2') ? parseFloat(localStorage.getItem('tideThreshold2')) : 2.0;
-  let originalThreshold2 = threshold2;
-  threshold2Input.value = threshold2;
-  threshold2Value.textContent = threshold2.toString().replace('.', ',');
+  // Load initial values from chrome.storage.local
+  chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'selectedHours'], (result) => {
+    let threshold = result.tideThreshold !== undefined ? parseFloat(result.tideThreshold) : 1.5;
+    let originalThreshold = threshold;
+    thresholdInput.value = threshold;
+    thresholdValue.textContent = threshold.toString().replace('.', ',');
+    
+    let threshold2 = result.tideThreshold2 !== undefined ? parseFloat(result.tideThreshold2) : 2.0;
+    let originalThreshold2 = threshold2;
+    threshold2Input.value = threshold2;
+    threshold2Value.textContent = threshold2.toString().replace('.', ',');
+    
+    let selectedHours = result.selectedHours || Array.from({ length: 24 }, (_, i) => i);
+    let originalSelectedHours = [...selectedHours];
+    hoursCheckboxes.forEach(checkbox => checkbox.checked = selectedHours.includes(parseInt(checkbox.value)));
 
-  let selectedHours = localStorage.getItem('selectedHours') ? JSON.parse(localStorage.getItem('selectedHours')) : Array.from({ length: 24 }, (_, i) => i);
-  let originalSelectedHours = [...selectedHours];
-  hoursCheckboxes.forEach(checkbox => checkbox.checked = selectedHours.includes(parseInt(checkbox.value)));
-
-  function updateHoursSummary() {
-    const ranges = [];
-    let start = null;
-    selectedHours.sort((a, b) => a - b);
-    for (let i = 0; i <= selectedHours.length; i++) {
-      if (i === selectedHours.length || (start !== null && selectedHours[i] !== selectedHours[i - 1] + 1)) {
-        if (start !== null) {
-          ranges.push(start === selectedHours[i - 1] ? `${start}h` : `${start}h→${selectedHours[i - 1]}h`);
+    function updateHoursSummary() {
+      const ranges = [];
+      let start = null;
+      selectedHours.sort((a, b) => a - b);
+      for (let i = 0; i <= selectedHours.length; i++) {
+        if (i === selectedHours.length || (start !== null && selectedHours[i] !== selectedHours[i - 1] + 1)) {
+          if (start !== null) {
+            ranges.push(start === selectedHours[i - 1] ? `${start}h` : `${start}h→${selectedHours[i - 1]}h`);
+          }
+          start = i < selectedHours.length ? selectedHours[i] : null;
+        } else if (start === null) {
+          start = selectedHours[i];
         }
-        start = i < selectedHours.length ? selectedHours[i] : null;
-      } else if (start === null) {
-        start = selectedHours[i];
       }
+      hoursSummary.textContent = ranges.join(', ') || 'Không có giờ nào';
     }
-    hoursSummary.textContent = ranges.join(', ') || 'Không có giờ nào';
-  }
-  updateHoursSummary();
+    updateHoursSummary();
 
-  editBtn.addEventListener('click', () => {
-    thresholdInput.disabled = false;
-    thresholdInput.style.display = 'inline';
-    thresholdSummary.style.display = 'none';
-    threshold2Input.disabled = false;
-    threshold2Input.style.display = 'inline';
-    threshold2Summary.style.display = 'none';
-    hoursCheckboxes.forEach(checkbox => checkbox.disabled = false);
-    editBtn.style.display = 'none';
-    saveBtn.style.display = 'inline';
-    cancelBtn.style.display = 'inline';
-    hoursSummary.style.display = 'none';
-    hoursContainer.style.display = 'block';
-    thresholdInput.focus();
-  });
+    editBtn.addEventListener('click', () => {
+      thresholdInput.disabled = false;
+      thresholdInput.style.display = 'inline';
+      thresholdSummary.style.display = 'none';
+      threshold2Input.disabled = false;
+      threshold2Input.style.display = 'inline';
+      threshold2Summary.style.display = 'none';
+      hoursCheckboxes.forEach(checkbox => checkbox.disabled = false);
+      editBtn.style.display = 'none';
+      saveBtn.style.display = 'inline';
+      cancelBtn.style.display = 'inline';
+      hoursSummary.style.display = 'none';
+      hoursContainer.style.display = 'block';
+      thresholdInput.focus();
+    });
 
-  saveBtn.addEventListener('click', () => {
-    const newThreshold = parseFloat(thresholdInput.value);
-    const newThreshold2 = parseFloat(threshold2Input.value);
-    if (!isNaN(newThreshold) && newThreshold >= 0 && !isNaN(newThreshold2) && newThreshold2 >= 0) {
-      threshold = newThreshold;
-      threshold2 = newThreshold2;
-      localStorage.setItem('tideThreshold', threshold);
-      localStorage.setItem('tideThreshold2', threshold2);
-      chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2 });
+    saveBtn.addEventListener('click', () => {
+      const newThreshold = parseFloat(thresholdInput.value);
+      const newThreshold2 = parseFloat(threshold2Input.value);
+      if (!isNaN(newThreshold) && newThreshold >= 0 && !isNaN(newThreshold2) && newThreshold2 >= 0) {
+        threshold = newThreshold;
+        threshold2 = newThreshold2;
+        chrome.storage.local.set({ 
+          tideThreshold: threshold,
+          tideThreshold2: threshold2
+        });
 
+        thresholdInput.disabled = true;
+        thresholdInput.style.display = 'none';
+        thresholdSummary.style.display = 'inline';
+        threshold2Input.disabled = true;
+        threshold2Input.style.display = 'none';
+        threshold2Summary.style.display = 'inline';
+        thresholdValue.textContent = threshold.toString().replace('.', ',');
+        threshold2Value.textContent = threshold2.toString().replace('.', ',');
+        
+        selectedHours = hoursCheckboxes.filter(checkbox => checkbox.checked).map(checkbox => parseInt(checkbox.value));
+        chrome.storage.local.set({ selectedHours: selectedHours });
+        
+        hoursCheckboxes.forEach(checkbox => checkbox.disabled = true);
+        editBtn.style.display = 'inline';
+        saveBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+        hoursSummary.style.display = 'inline';
+        hoursContainer.style.display = 'none';
+        updateHoursSummary();
+        loadTideData();
+        updateBadge();
+      } else {
+        alert('Vui lòng nhập số hợp lệ >= 0 cho cả hai ngưỡng');
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      thresholdInput.value = originalThreshold;
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
       thresholdSummary.style.display = 'inline';
+      thresholdValue.textContent = originalThreshold.toString().replace('.', ',');
+      threshold2Input.value = originalThreshold2;
       threshold2Input.disabled = true;
       threshold2Input.style.display = 'none';
       threshold2Summary.style.display = 'inline';
-      thresholdValue.textContent = threshold.toString().replace('.', ',');
-      threshold2Value.textContent = threshold2.toString().replace('.', ',');
-      selectedHours = hoursCheckboxes.filter(checkbox => checkbox.checked).map(checkbox => parseInt(checkbox.value));
-      localStorage.setItem('selectedHours', JSON.stringify(selectedHours));
-      chrome.storage.local.set({ selectedHours: selectedHours });
-      hoursCheckboxes.forEach(checkbox => checkbox.disabled = true);
+      threshold2Value.textContent = originalThreshold2.toString().replace('.', ',');
+      hoursCheckboxes.forEach(checkbox => {
+        checkbox.checked = originalSelectedHours.includes(parseInt(checkbox.value));
+        checkbox.disabled = true;
+      });
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
       cancelBtn.style.display = 'none';
       hoursSummary.style.display = 'inline';
       hoursContainer.style.display = 'none';
       updateHoursSummary();
-      loadTideData();
-      updateBadge();
-    } else {
-      alert('Vui lòng nhập số hợp lệ >= 0 cho cả hai ngưỡng');
-    }
-  });
-
-  cancelBtn.addEventListener('click', () => {
-    thresholdInput.value = originalThreshold;
-    thresholdInput.disabled = true;
-    thresholdInput.style.display = 'none';
-    thresholdSummary.style.display = 'inline';
-    thresholdValue.textContent = originalThreshold.toString().replace('.', ',');
-    threshold2Input.value = originalThreshold2;
-    threshold2Input.disabled = true;
-    threshold2Input.style.display = 'none';
-    threshold2Summary.style.display = 'inline';
-    threshold2Value.textContent = originalThreshold2.toString().replace('.', ',');
-    hoursCheckboxes.forEach(checkbox => {
-      checkbox.checked = originalSelectedHours.includes(parseInt(checkbox.value));
-      checkbox.disabled = true;
     });
-    editBtn.style.display = 'inline';
-    saveBtn.style.display = 'none';
-    cancelBtn.style.display = 'none';
-    hoursSummary.style.display = 'inline';
-    hoursContainer.style.display = 'none';
-    updateHoursSummary();
-  });
 
-  function loadTideData() {
-    tideInfo.textContent = 'Đang tải dữ liệu...';
-    fetch('https://thegioimoicau.com/dia-danh/sai-gon/trang-1', {
-      method: 'GET',
-      headers: {'Accept': 'text/html', 'Content-Type': 'text/html; charset=UTF-8'}
-    })
-      .then(response => response.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const tables = doc.querySelectorAll('table.table-striped');
-        if (tables.length === 0) {
-          tideInfo.textContent = 'Không tìm thấy bảng dữ liệu.';
-          return;
-        }
-        tideInfo.textContent = '';
-        tables.forEach((table, index) => {
-          const progressBars = table.querySelectorAll('.progress-bar');
-          let date = '', tideData = [];
-          progressBars.forEach(bar => {
-            const text = bar.textContent.trim();
-            if (text.match(/Dương lịch \d{2}\/\d{2}\/\d{4}/)) date = text.replace('Dương lịch ', '');
-            if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
-          });
-          if (date && tideData.length > 0) {
-            const [day, month, year] = date.split('/');
-            const dateObj = new Date(`${year}-${month}-${day}`);
-            const formattedDate = `${dateObj.toLocaleDateString('vi-VN', { weekday: 'long' })}, ${date}:`;
-
-            const dateDiv = document.createElement('div');
-            dateDiv.className = 'date';            
-            dateDiv.innerHTML = `<span class="date-value">${formattedDate}</span>`;
-            tideInfo.appendChild(dateDiv);
-  
-            const labels = [], data = [];
-            for (let i = 0; i < tideData.length - 1; i += 2) {
-              labels.push(tideData[i]);
-              data.push(parseFloat(tideData[i + 1]));
-            }
-  
-            const currentHour = new Date().getHours();
-            const barColors = data.map((level, idx) => {
-              const hour = parseInt(labels[idx].replace('h', ''));
-              let baseColor = 'rgba(54, 162, 235, 1)'; // Xanh: Không vượt ngưỡng
-              
-              if (level >= threshold2) {
-                baseColor = 'rgba(255, 215, 0, 1)'; // Vàng: Vượt ngưỡng 2
-              }
-              // if (level >= threshold && selectedHours.includes(hour)) {
-              if (level >= threshold) {
-                baseColor = 'rgba(255, 0, 0, 1)'; // Đỏ: Vượt ngưỡng 1 và trong giờ kiểm tra
-              }
-
-              if (index === 0 && hour === currentHour) {
-                return createDiagonalPattern(baseColor);
-              }
-              return baseColor;
+    function loadTideData() {
+      tideInfo.textContent = 'Đang tải dữ liệu...';
+      fetch('https://thegioimoicau.com/dia-danh/sai-gon/trang-1', {
+        method: 'GET',
+        headers: {'Accept': 'text/html', 'Content-Type': 'text/html; charset=UTF-8'}
+      })
+        .then(response => response.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const tables = doc.querySelectorAll('table.table-striped');
+          if (tables.length === 0) {
+            tideInfo.textContent = 'Không tìm thấy bảng dữ liệu.';
+            return;
+          }
+          tideInfo.textContent = '';
+          tables.forEach((table, index) => {
+            const progressBars = table.querySelectorAll('.progress-bar');
+            let date = '', tideData = [];
+            progressBars.forEach(bar => {
+              const text = bar.textContent.trim();
+              if (text.match(/Dương lịch \d{2}\/\d{2}\/\d{4}/)) date = text.replace('Dương lịch ', '');
+              if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
             });
-  
-            const canvas = document.createElement('canvas');
-            canvas.id = `tideChart-${index}`;
-            canvas.className = 'tide-chart';
-            tideInfo.appendChild(canvas);
-  
-            new Chart(canvas.getContext('2d'), {
-              type: 'bar',
-              data: {
-                labels,
-                datasets: [{
-                  label: 'Mực nước (m)',
-                  data,
-                  backgroundColor: barColors,
-                  borderColor: barColors,
-                  borderWidth: 1
-                }]
-              },
-              options: {
-                scales: {
-                  x: { title: { display: true, text: 'Thời gian' } },
-                  y: { beginAtZero: true, title: { display: true, text: 'Mực nước (m)' } }
+            if (date && tideData.length > 0) {
+              const [day, month, year] = date.split('/');
+              const dateObj = new Date(`${year}-${month}-${day}`);
+              const formattedDate = `${dateObj.toLocaleDateString('vi-VN', { weekday: 'long' })}, ${date}:`;
+
+              const dateDiv = document.createElement('div');
+              dateDiv.className = 'date';            
+              dateDiv.innerHTML = `<span class="date-value">${formattedDate}</span>`;
+              tideInfo.appendChild(dateDiv);
+    
+              const labels = [], data = [];
+              for (let i = 0; i < tideData.length - 1; i += 2) {
+                labels.push(tideData[i]);
+                data.push(parseFloat(tideData[i + 1]));
+              }
+    
+              const currentHour = new Date().getHours();
+              const barColors = data.map((level, idx) => {
+                const hour = parseInt(labels[idx].replace('h', ''));
+                let baseColor = 'rgba(54, 162, 235, 1)'; // Xanh: Không vượt ngưỡng
+                
+                if (level >= threshold2) {
+                  baseColor = 'rgba(255, 215, 0, 1)'; // Vàng: Vượt ngưỡng 2
+                }
+                if (level >= threshold) {
+                  baseColor = 'rgba(255, 0, 0, 1)'; // Đỏ: Vượt ngưỡng 1
+                }
+
+                if (index === 0 && hour === currentHour) {
+                  return createDiagonalPattern(baseColor);
+                }
+                return baseColor;
+              });
+    
+              const canvas = document.createElement('canvas');
+              canvas.id = `tideChart-${index}`;
+              canvas.className = 'tide-chart';
+              tideInfo.appendChild(canvas);
+    
+              new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                  labels,
+                  datasets: [{
+                    label: 'Mực nước (m)',
+                    data,
+                    backgroundColor: barColors,
+                    borderColor: barColors,
+                    borderWidth: 1
+                  }]
                 },
-                plugins: {
-                  legend: { display: false },
-                  tooltip: { callbacks: { label: context => `${context.parsed.y}m` } },
-                  annotation: {
-                    annotations: {
-                      thresholdLine: {
-                        type: 'line',
-                        yMin: threshold,
-                        yMax: threshold,
-                        borderColor: '#d32f2f',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        label: {
-                          enabled: true,
-                          content: `Ngưỡng: ${threshold}m`,
-                          position: 'end',
-                          backgroundColor: 'rgba(211, 47, 47, 0.8)',
-                          color: '#fff',
-                          padding: 4
-                        }
-                      },
-                      threshold2Line: {
-                        type: 'line',
-                        yMin: threshold2,
-                        yMax: threshold2,
-                        borderColor: '#ff8f00',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        label: {
-                          enabled: true,
-                          content: `Ngưỡng 2: ${threshold2}m`,
-                          position: 'end',
-                          backgroundColor: 'rgba(255, 143, 0, 0.8)',
-                          color: '#fff',
-                          padding: 4
-                        }
-                      },
-                      // Thêm các đường dọc và vùng phủ
-                      ...(() => {
-                        const boundaryHours = [];
-                        const ranges = [];
-                        selectedHours.sort((a, b) => a - b); // Đảm bảo thứ tự tăng dần
-                        let start = selectedHours[0];
-                        let prev = start;
-            
-                        for (let i = 1; i <= selectedHours.length; i++) {
-                          const current = selectedHours[i];
-                          if (current !== prev + 1 || i === selectedHours.length) {
-                            boundaryHours.push(start); // Giờ bắt đầu của khoảng
-                            boundaryHours.push(prev); // Giờ kết thúc của khoảng
-                            ranges.push({ start, end: prev }); // Lưu khoảng để tạo vùng phủ
-                            start = current; // Đặt lại start cho khoảng mới
+                options: {
+                  scales: {
+                    x: { title: { display: true, text: 'Thời gian' } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Mực nước (m)' } }
+                  },
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: context => `${context.parsed.y}m` } },
+                    annotation: {
+                      annotations: {
+                        thresholdLine: {
+                          type: 'line',
+                          yMin: threshold,
+                          yMax: threshold,
+                          borderColor: '#d32f2f',
+                          borderWidth: 2,
+                          borderDash: [5, 5],
+                          label: {
+                            enabled: true,
+                            content: `Ngưỡng: ${threshold}m`,
+                            position: 'end',
+                            backgroundColor: 'rgba(211, 47, 47, 0.8)',
+                            color: '#fff',
+                            padding: 4
                           }
-                          prev = current || prev;
-                        }
-            
-                        // Tạo object chứa annotations
-                        const annotations = {};
-            
-                        // 1. Tạo các đường dọc cho giờ biên
-                        boundaryHours.forEach((hour, index) => {
-                          annotations[`verticalLine${hour}`] = {
-                            type: 'line',
-                            xMin: `${hour}h`,
-                            xMax: `${hour}h`,
-                            borderColor: '#00c853',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            label: {
-                              enabled: true,
-                              content: `${hour}h`,
-                              position: 'top',
-                              backgroundColor: 'rgba(0, 200, 83, 0.8)',
-                              color: '#fff',
-                              padding: 4
+                        },
+                        threshold2Line: {
+                          type: 'line',
+                          yMin: threshold2,
+                          yMax: threshold2,
+                          borderColor: '#ff8f00',
+                          borderWidth: 2,
+                          borderDash: [5, 5],
+                          label: {
+                            enabled: true,
+                            content: `Ngưỡng 2: ${threshold2}m`,
+                            position: 'end',
+                            backgroundColor: 'rgba(255, 143, 0, 0.8)',
+                            color: '#fff',
+                            padding: 4
+                          }
+                        },
+                        ...(() => {
+                          const boundaryHours = [];
+                          const ranges = [];
+                          selectedHours.sort((a, b) => a - b);
+                          let start = selectedHours[0];
+                          let prev = start;
+              
+                          for (let i = 1; i <= selectedHours.length; i++) {
+                            const current = selectedHours[i];
+                            if (current !== prev + 1 || i === selectedHours.length) {
+                              boundaryHours.push(start);
+                              boundaryHours.push(prev);
+                              ranges.push({ start, end: prev });
+                              start = current;
                             }
-                          };
-                        });
-            
-                        // 2. Tạo các vùng phủ giữa các cặp biên
-                        ranges.forEach((range, index) => {
-                          annotations[`highlightRange${index}`] = {
-                            type: 'box',
-                            xMin: `${range.start}h`,
-                            xMax: `${range.end}h`,
-                            yMin: 0, // Từ đáy biểu đồ
-                            yMax: Math.max(...data) * 1.1, // Đến trên mức cao nhất của dữ liệu (có thể điều chỉnh)
-                            backgroundColor: 'rgba(2,136,209, 0.35)', // Xanh lá nhạt, độ trong suốt 0.2
-                            borderWidth: 0 // Không có viền
-                          };
-                        });
-            
-                        return annotations;
-                      })()
+                            prev = current || prev;
+                          }
+              
+                          const annotations = {};
+              
+                          boundaryHours.forEach((hour, index) => {
+                            annotations[`verticalLine${hour}`] = {
+                              type: 'line',
+                              xMin: `${hour}h`,
+                              xMax: `${hour}h`,
+                              borderColor: '#00c853',
+                              borderWidth: 2,
+                              borderDash: [5, 5],
+                              label: {
+                                enabled: true,
+                                content: `${hour}h`,
+                                position: 'top',
+                                backgroundColor: 'rgba(0, 200, 83, 0.8)',
+                                color: '#fff',
+                                padding: 4
+                              }
+                            };
+                          });
+              
+                          ranges.forEach((range, index) => {
+                            annotations[`highlightRange${index}`] = {
+                              type: 'box',
+                              xMin: `${range.start}h`,
+                              xMax: `${range.end}h`,
+                              yMin: 0,
+                              yMax: Math.max(...data) * 1.1,
+                              backgroundColor: 'rgba(2,136,209, 0.35)',
+                              borderWidth: 0
+                            };
+                          });
+              
+                          return annotations;
+                        })()
+                      }
                     }
                   }
                 }
+              });
+            }
+          });
+          updateBadge();
+        })
+        .catch(error => tideInfo.textContent = `Lỗi: ${error.message}`);
+    }
+
+    function updateBadge() {
+      fetch('https://thegioimoicau.com/dia-danh/sai-gon/trang-1', {
+        method: 'GET',
+        headers: {'Accept': 'text/html', 'Content-Type': 'text/html; charset=UTF-8'}
+      })
+        .then(response => response.text())
+        .then(html => {
+          chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'selectedHours'], (result) => {
+            const threshold = parseFloat(result.tideThreshold || 1.5);
+            const threshold2 = parseFloat(result.tideThreshold2 || 2.0);
+            const selectedHours = result.selectedHours || Array.from({ length: 24 }, (_, i) => i);
+            const currentHour = new Date().getHours();
+            const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
+
+            let redDays = [];
+            let currentHourLevel = null;
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const tables = Array.from(doc.querySelectorAll('table.table-striped')).slice(0, 3);
+
+            tables.forEach((table, idx) => {
+              const tideData = [];
+              let date = '';
+              table.querySelectorAll('.progress-bar').forEach(bar => {
+                const text = bar.textContent.trim();
+                if (text.match(/Dương lịch \d{2}\/\d{2}\/\d{4}/)) date = text.replace('Dương lịch ', '');
+                if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
+              });
+              for (let i = 0; i < tideData.length - 1; i += 2) {
+                const hour = parseInt(tideData[i].replace('h', ''));
+                const level = parseFloat(tideData[i + 1]);
+                if (selectedHours.includes(hour) && level >= threshold) {
+                  if (redDays.indexOf(idx + 1) === -1) redDays.push(idx + 1);
+                }
+                if (idx === 0 && date === today && hour === currentHour) {
+                  currentHourLevel = level;
+                }
               }
             });
-          }
-        });
-        updateBadge();
-      })
-      .catch(error => tideInfo.textContent = `Lỗi: ${error.message}`);
-  }
 
-  function updateBadge() {
-    fetch('https://thegioimoicau.com/dia-danh/sai-gon/trang-1', {
-      method: 'GET',
-      headers: {'Accept': 'text/html', 'Content-Type': 'text/html; charset=UTF-8'}
-    })
-      .then(response => response.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const tables = Array.from(doc.querySelectorAll('table.table-striped')).slice(0, 3);
-        const threshold = parseFloat(localStorage.getItem('tideThreshold') || 1.5);
-        const threshold2 = parseFloat(localStorage.getItem('tideThreshold2') || 2.0);
-        const selectedHours = JSON.parse(localStorage.getItem('selectedHours') || JSON.stringify([...Array(24).keys()]));
-        const currentHour = new Date().getHours();
-        const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
+            if (redDays.length > 0) {
+              const badgeText = redDays.join('');
+              chrome.action.setBadgeText({ text: badgeText });
+              chrome.action.setBadgeBackgroundColor({ color: '#EA4335' });
+              chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
+            } else {
+              chrome.action.setBadgeText({ text: '' });
+            }
 
-        let redDays = [];
-        let currentHourLevel = null;
-
-        tables.forEach((table, idx) => {
-          const tideData = [];
-          let date = '';
-          table.querySelectorAll('.progress-bar').forEach(bar => {
-            const text = bar.textContent.trim();
-            if (text.match(/Dương lịch \d{2}\/\d{2}\/\d{4}/)) date = text.replace('Dương lịch ', '');
-            if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
+            if (currentHourLevel !== null) {
+              if (currentHourLevel >= threshold) {
+                chrome.action.setIcon({ path: 'icon64_red.png' });
+              } else if (currentHourLevel >= threshold2) {
+                chrome.action.setIcon({ path: 'icon64_yellow.png' });
+              } else {
+                chrome.action.setIcon({ path: 'icon64.png' });
+              }
+            } else {
+              chrome.action.setIcon({ path: 'icon64.png' });
+            }
           });
-          for (let i = 0; i < tideData.length - 1; i += 2) {
-            const hour = parseInt(tideData[i].replace('h', ''));
-            const level = parseFloat(tideData[i + 1]);
-            if (selectedHours.includes(hour) && level >= threshold) {
-              if (redDays.indexOf(idx + 1) === -1) redDays.push(idx + 1);
-            }
-            if (idx === 0 && date === today && hour === currentHour) {
-              currentHourLevel = level;
-            }
-          }
         });
+    }
 
-        if (redDays.length > 0) {
-          const badgeText = redDays.join('');
-          chrome.action.setBadgeText({ text: badgeText });
-          chrome.action.setBadgeBackgroundColor({ color: '#EA4335' });
-          chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
-        } else {
-          chrome.action.setBadgeText({ text: '' });
-        }
-
-        if (currentHourLevel !== null) {
-          if (currentHourLevel >= threshold) {
-            chrome.action.setIcon({ path: 'icon64_red.png' });
-          } else if (currentHourLevel >= threshold2) {
-            chrome.action.setIcon({ path: 'icon64_yellow.png' });
-          } else {
-            chrome.action.setIcon({ path: 'icon64.png' });
-          }
-        } else {
-          chrome.action.setIcon({ path: 'icon64.png' });
-        }
-      });
-  }
-
-  loadTideData();
+    loadTideData();
+  });
 });

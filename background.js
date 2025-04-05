@@ -1,5 +1,5 @@
 chrome.runtime.onInstalled.addListener(() => {
-    // Tạo alarm chạy mỗi 10 phút
+    // Tạo alarm chạy mỗi 5 phút
     chrome.alarms.create('updateBadgeAlarm', { periodInMinutes: 5 });
 
     // Gọi lần đầu ngay khi cài
