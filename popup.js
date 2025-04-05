@@ -102,6 +102,8 @@ document.addEventListener('DOMContentLoaded', function() {
       threshold2 = newThreshold2;
       localStorage.setItem('tideThreshold', threshold);
       localStorage.setItem('tideThreshold2', threshold2);
+      chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2 });
+
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
       thresholdSummary.style.display = 'inline';
@@ -112,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
       threshold2Value.textContent = threshold2.toString().replace('.', ',');
       selectedHours = hoursCheckboxes.filter(checkbox => checkbox.checked).map(checkbox => parseInt(checkbox.value));
       localStorage.setItem('selectedHours', JSON.stringify(selectedHours));
+      chrome.storage.local.set({ selectedHours: selectedHours });
       hoursCheckboxes.forEach(checkbox => checkbox.disabled = true);
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
@@ -197,7 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
               if (level >= threshold2) {
                 baseColor = 'rgba(255, 215, 0, 1)'; // Vàng: Vượt ngưỡng 2
               }
-              if (level >= threshold && selectedHours.includes(hour)) {
+              // if (level >= threshold && selectedHours.includes(hour)) {
+              if (level >= threshold) {
                 baseColor = 'rgba(255, 0, 0, 1)'; // Đỏ: Vượt ngưỡng 1 và trong giờ kiểm tra
               }
 
@@ -265,7 +269,64 @@ document.addEventListener('DOMContentLoaded', function() {
                           color: '#fff',
                           padding: 4
                         }
-                      }
+                      },
+                      // Thêm các đường dọc và vùng phủ
+                      ...(() => {
+                        const boundaryHours = [];
+                        const ranges = [];
+                        selectedHours.sort((a, b) => a - b); // Đảm bảo thứ tự tăng dần
+                        let start = selectedHours[0];
+                        let prev = start;
+            
+                        for (let i = 1; i <= selectedHours.length; i++) {
+                          const current = selectedHours[i];
+                          if (current !== prev + 1 || i === selectedHours.length) {
+                            boundaryHours.push(start); // Giờ bắt đầu của khoảng
+                            boundaryHours.push(prev); // Giờ kết thúc của khoảng
+                            ranges.push({ start, end: prev }); // Lưu khoảng để tạo vùng phủ
+                            start = current; // Đặt lại start cho khoảng mới
+                          }
+                          prev = current || prev;
+                        }
+            
+                        // Tạo object chứa annotations
+                        const annotations = {};
+            
+                        // 1. Tạo các đường dọc cho giờ biên
+                        boundaryHours.forEach((hour, index) => {
+                          annotations[`verticalLine${hour}`] = {
+                            type: 'line',
+                            xMin: `${hour}h`,
+                            xMax: `${hour}h`,
+                            borderColor: '#00c853',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            label: {
+                              enabled: true,
+                              content: `${hour}h`,
+                              position: 'top',
+                              backgroundColor: 'rgba(0, 200, 83, 0.8)',
+                              color: '#fff',
+                              padding: 4
+                            }
+                          };
+                        });
+            
+                        // 2. Tạo các vùng phủ giữa các cặp biên
+                        ranges.forEach((range, index) => {
+                          annotations[`highlightRange${index}`] = {
+                            type: 'box',
+                            xMin: `${range.start}h`,
+                            xMax: `${range.end}h`,
+                            yMin: 0, // Từ đáy biểu đồ
+                            yMax: Math.max(...data) * 1.1, // Đến trên mức cao nhất của dữ liệu (có thể điều chỉnh)
+                            backgroundColor: 'rgba(2,136,209, 0.35)', // Xanh lá nhạt, độ trong suốt 0.2
+                            borderWidth: 0 // Không có viền
+                          };
+                        });
+            
+                        return annotations;
+                      })()
                     }
                   }
                 }
