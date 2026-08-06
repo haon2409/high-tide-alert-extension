@@ -28,8 +28,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
     #threshold-container,
-    #threshold2-container,
-    #hours-container {
+    #threshold2-container {
       margin-bottom: 12px;
       display: flex;
       align-items: center;
@@ -56,24 +55,6 @@
     }
     #threshold-summary { color: #d32f2f; font-weight: 700; }
     #threshold2-summary { color: #ff8f00; font-weight: 700; }
-    #hours-summary { color: #0288d1; font-weight: 700; }
-    #hours-checkboxes {
-      display: none;
-      flex-wrap: wrap;
-      gap: 8px;
-      width: 100%;
-      margin-top: 8px;
-    }
-    #hours-checkboxes label {
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      min-width: 42px;
-    }
-    #hours-checkboxes input[type="checkbox"] {
-      accent-color: #0288d1;
-    }
     button {
       background: #0288d1;
       color: #fff;
@@ -120,12 +101,6 @@
     <span>Ngưỡng vàng (cảnh báo):</span>
     <span id="threshold2-summary"><span id="threshold2-value">2,0</span> m</span>
     <input type="number" id="threshold2-input" min="0" step="0.1" value="2.0" style="display:none" disabled>
-  </div>
-
-  <div id="hours-container">
-    <span>Giờ kiểm tra:</span>
-    <span id="hours-summary"></span>
-    <div id="hours-checkboxes"></div>
   </div>
 
   <div id="status"></div>

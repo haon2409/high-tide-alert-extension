@@ -1,16 +1,21 @@
 /**
  * High Tide Alert - Background Service Worker
- * Cập nhật badge & icon định kỳ dựa trên mực nước thủy triều Sài Gòn
+ * Vẽ icon 5 cột động (T-1 đến T+3) dựa trên mực nước thủy triều
  */
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
-const DEFAULT_THRESHOLD = 1.5;   // Đỏ (nguy hiểm cao)
-const DEFAULT_THRESHOLD2 = 2.0;  // Vàng (cảnh báo)
-const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
+const DEFAULT_THRESHOLD = 1.5;
+const DEFAULT_THRESHOLD2 = 2.0;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('updateBadgeAlarm', { periodInMinutes: 5 });
   updateBadge();
+});
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && (changes.tideThreshold || changes.tideThreshold2)) {
+    updateBadge();
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -19,10 +24,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-/**
- * Parse HTML thủy triều bằng regex (service worker không có DOMParser)
- * @returns {{ date: string, entries: { hour: number, level: number }[] }[]}
- */
 function parseTideTables(html, maxTables = 3) {
   const result = [];
   const tableRegex = /<table class="table table-striped">[\s\S]*?<\/table>/g;
@@ -68,70 +69,92 @@ function getTodayString() {
   });
 }
 
+function updateIcon(tables, threshold, threshold2) {
+  const flatData = [];
+  tables.forEach(t => {
+    t.entries.forEach(e => {
+      flatData.push({ date: t.date, hour: e.hour, level: e.level });
+    });
+  });
+
+  const currentHour = new Date().getHours();
+  const today = getTodayString();
+  const currentIndex = flatData.findIndex(d => d.date === today && d.hour === currentHour);
+
+  // Trích xuất 5 cột: T-1, T, T+1, T+2, T+3
+  const targetLevels = [];
+  if (currentIndex !== -1) {
+    for (let i = currentIndex - 1; i <= currentIndex + 3; i++) {
+      if (i >= 0 && i < flatData.length) {
+        targetLevels.push(flatData[i].level);
+      } else {
+        targetLevels.push(0); // Trống dữ liệu thì gán 0
+      }
+    }
+  } else {
+    targetLevels.push(0, 0, 0, 0, 0);
+  }
+
+  // Khởi tạo Canvas ẩn 32x32 pixel
+  const canvas = new OffscreenCanvas(32, 32);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 32, 32);
+
+  const maxLevel = Math.max(...targetLevels, 2.5); // Lấy chuẩn mốc cao nhất để scale chiều cao
+  const colWidth = 5;
+  const gap = 1;
+  const startX = 1;
+
+  targetLevels.forEach((level, idx) => {
+    if (level === 0) return; // Không vẽ nếu bằng 0
+    
+    const h = Math.max((level / maxLevel) * 32, 1);
+    const x = startX + idx * (colWidth + gap);
+    const y = 32 - h;
+
+    if (level >= threshold) {
+      ctx.fillStyle = 'rgba(255, 0, 0, 1)';
+    } else if (level >= threshold2) {
+      ctx.fillStyle = 'rgba(255, 215, 0, 1)';
+    } else {
+      ctx.fillStyle = 'rgba(54, 162, 235, 1)';
+    }
+
+    ctx.fillRect(x, y, colWidth, h);
+
+    // Cột 2 (Giờ hiện tại): Viền đậm để nhận diện
+    if (idx === 1) {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, colWidth, h);
+    }
+  });
+
+  const imageData = ctx.getImageData(0, 0, 32, 32);
+  
+  // Áp dụng biểu đồ lên icon, xóa badge cũ
+  chrome.action.setIcon({ imageData: imageData });
+  chrome.action.setBadgeText({ text: '' });
+}
+
 function updateBadge() {
   fetch(TIDE_URL, {
     method: 'GET',
-    headers: {
-      Accept: 'text/html',
-      'Content-Type': 'text/html; charset=UTF-8'
-    }
+    headers: { Accept: 'text/html', 'Content-Type': 'text/html; charset=UTF-8' }
   })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();
     })
     .then((html) => {
-      chrome.storage.local.get(
-        ['tideThreshold', 'tideThreshold2', 'selectedHours'],
-        (result) => {
-          const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
-          const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
-          const selectedHours =
-            Array.isArray(result.selectedHours) && result.selectedHours.length
-              ? result.selectedHours
-              : DEFAULT_HOURS;
-
-          const currentHour = new Date().getHours();
-          const today = getTodayString();
-          const tables = parseTideTables(html, 3);
-
-          const redDays = [];
-          let currentHourLevel = null;
-
-          tables.forEach((table, idx) => {
-            table.entries.forEach(({ hour, level }) => {
-              if (selectedHours.includes(hour) && level >= threshold) {
-                if (!redDays.includes(idx + 1)) redDays.push(idx + 1);
-              }
-              if (idx === 0 && table.date === today && hour === currentHour) {
-                currentHourLevel = level;
-              }
-            });
-          });
-
-          // Badge: số ngày có mực nước vượt ngưỡng đỏ trong khung giờ đã chọn
-          if (redDays.length > 0) {
-            chrome.action.setBadgeText({ text: redDays.join('') });
-            chrome.action.setBadgeBackgroundColor({ color: '#EA4335' });
-            chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
-          } else {
-            chrome.action.setBadgeText({ text: '' });
-          }
-
-          // Icon theo mực nước giờ hiện tại
-          let iconPath = 'icon64.png';
-          if (currentHourLevel !== null) {
-            if (currentHourLevel >= threshold) {
-              iconPath = 'icon64_red.png';
-            } else if (currentHourLevel >= threshold2) {
-              iconPath = 'icon64_yellow.png';
-            }
-          }
-          chrome.action.setIcon({ path: iconPath });
-        }
-      );
+      chrome.storage.local.get(['tideThreshold', 'tideThreshold2'], (result) => {
+        const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
+        const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
+        const tables = parseTideTables(html, 4); 
+        updateIcon(tables, threshold, threshold2);
+      });
     })
     .catch((err) => {
-      console.error('[High Tide Alert] updateBadge failed:', err.message);
+      console.error('[High Tide Alert] Cập nhật icon thất bại:', err.message);
     });
 }
