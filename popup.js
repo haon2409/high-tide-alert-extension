@@ -78,63 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return result;
   }
 
-  function updateIconFromData(tables, threshold, threshold2) {
-    const flatData = [];
-    tables.forEach(t => {
-      t.labels.forEach((label, i) => {
-        flatData.push({ date: t.date, hour: parseInt(label.replace('h', ''), 10), level: t.data[i] });
-      });
-    });
-
-    const currentHour = new Date().getHours();
-    const today = new Date().toLocaleDateString('vi-VN', {
-      day: '2-digit', month: '2-digit', year: 'numeric'
-    });
-    const currentIndex = flatData.findIndex(d => d.date === today && d.hour === currentHour);
-
-    const targetLevels = [];
-    if (currentIndex !== -1) {
-      for (let i = currentIndex - 1; i <= currentIndex + 3; i++) {
-        if (i >= 0 && i < flatData.length) targetLevels.push(flatData[i].level);
-        else targetLevels.push(0);
-      }
-    } else {
-      targetLevels.push(0, 0, 0, 0, 0);
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-
-    const maxLevel = Math.max(...targetLevels, 2.5);
-    const colWidth = 5;
-    const gap = 1;
-    const startX = 1;
-
-    targetLevels.forEach((level, idx) => {
-      if (level === 0) return;
-      const h = Math.max((level / maxLevel) * 32, 1);
-      const x = startX + idx * (colWidth + gap);
-      const y = 32 - h;
-
-      if (level >= threshold) ctx.fillStyle = 'rgba(255, 0, 0, 1)';
-      else if (level >= threshold2) ctx.fillStyle = 'rgba(255, 215, 0, 1)';
-      else ctx.fillStyle = 'rgba(54, 162, 235, 1)';
-
-      ctx.fillRect(x, y, colWidth, h);
-
-      if (idx === 1) {
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, colWidth, h);
-      }
-    });
-
-    chrome.action.setIcon({ imageData: ctx.getImageData(0, 0, 32, 32) });
-    chrome.action.setBadgeText({ text: '' });
-  }
-
   function renderChart(container, { date, labels, data }, index, threshold, threshold2) {
     const [day, month, year] = date.split('/');
     const dateObj = new Date(`${year}-${month}-${day}`);
@@ -222,9 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusEl.textContent = '';
         tables.forEach((t, idx) => {
           renderChart(tideInfo, t, idx, threshold, threshold2);
-        });
-        
-        updateIconFromData(tables, threshold, threshold2);
+        });              
       })
       .catch((err) => {
         statusEl.textContent = `Lỗi: ${err.message}`;
@@ -265,15 +206,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       threshold = newT;
       threshold2 = newT2;
-
+    
+      // Lưu vào storage, background.js sẽ tự bắt sự kiện này để cập nhật icon
       chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2 });
-
+    
       originalThreshold = threshold;
       originalThreshold2 = threshold2;
-
+    
       thresholdValue.textContent = String(threshold).replace('.', ',');
       threshold2Value.textContent = String(threshold2).replace('.', ',');
-
+    
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
       thresholdSummary.style.display = 'inline';
@@ -283,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
       cancelBtn.style.display = 'none';
-
+    
       loadTideData(threshold, threshold2);
     });
 

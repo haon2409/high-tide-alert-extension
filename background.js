@@ -81,32 +81,30 @@ function updateIcon(tables, threshold, threshold2) {
   const today = getTodayString();
   const currentIndex = flatData.findIndex(d => d.date === today && d.hour === currentHour);
 
-  // Trích xuất 5 cột: T-1, T, T+1, T+2, T+3
   const targetLevels = [];
   if (currentIndex !== -1) {
     for (let i = currentIndex - 1; i <= currentIndex + 3; i++) {
       if (i >= 0 && i < flatData.length) {
         targetLevels.push(flatData[i].level);
       } else {
-        targetLevels.push(0); // Trống dữ liệu thì gán 0
+        targetLevels.push(0);
       }
     }
   } else {
     targetLevels.push(0, 0, 0, 0, 0);
   }
 
-  // Khởi tạo Canvas ẩn 32x32 pixel
   const canvas = new OffscreenCanvas(32, 32);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 32, 32);
 
-  const maxLevel = Math.max(...targetLevels, 2.5); // Lấy chuẩn mốc cao nhất để scale chiều cao
+  const maxLevel = Math.max(...targetLevels, 2.5);
   const colWidth = 5;
   const gap = 1;
   const startX = 1;
 
   targetLevels.forEach((level, idx) => {
-    if (level === 0) return; // Không vẽ nếu bằng 0
+    if (level === 0) return;
     
     const h = Math.max((level / maxLevel) * 32, 1);
     const x = startX + idx * (colWidth + gap);
@@ -122,19 +120,24 @@ function updateIcon(tables, threshold, threshold2) {
 
     ctx.fillRect(x, y, colWidth, h);
 
-    // Cột 2 (Giờ hiện tại): Viền đậm để nhận diện
     if (idx === 1) {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, colWidth, h);
+      ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+      ctx.fillRect(x, 32 - 4, colWidth, 4);
     }
   });
 
   const imageData = ctx.getImageData(0, 0, 32, 32);
   
-  // Áp dụng biểu đồ lên icon, xóa badge cũ
   chrome.action.setIcon({ imageData: imageData });
-  chrome.action.setBadgeText({ text: '' });
+
+  // Cập nhật tooltip (hiện khi hover vào icon)
+  if (currentIndex !== -1 && flatData[currentIndex]) {
+    const currentData = flatData[currentIndex];
+    const titleText = `Giờ hiện tại (${currentData.hour}h): ${currentData.level}m`;
+    chrome.action.setTitle({ title: titleText });
+  } else {
+    chrome.action.setTitle({ title: 'High Tide Alert' });
+  }
 }
 
 function updateBadge() {
