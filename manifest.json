@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "High Tide Alert",
-  "version": "1.0",
-  "description": "Display tide information for Saigon",
+  "version": "2.2",
+  "description": "Theo dõi mực nước thủy triều Sài Gòn, cảnh báo khi vượt ngưỡng",
   "permissions": ["alarms", "storage"],
   "host_permissions": ["https://thegioimoicau.com/*"],
   "background": {
@@ -19,11 +19,5 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["chart.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

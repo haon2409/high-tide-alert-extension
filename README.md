@@ -1,37 +1,38 @@
 # High Tide Alert Extension
 
-![Extension Logo](https://via.placeholder.com/150)
+Extension Chrome theo dõi mực nước thủy triều tại Sài Gòn (nguồn: thegioimoicau.com).
 
-## Overview
-High Tide Alert Extension is a browser extension that provides real-time alerts for high tide levels in your selected locations. This extension helps users stay informed about tide conditions, which is especially useful for surfers, sailors, and coastal residents.
+## Tính năng
 
-## Features
-- Real-time high tide alerts
-- Customizable locations
-- User-friendly interface
-- Lightweight and efficient
+- Biểu đồ mực nước theo giờ (nhiều ngày)
+- Hai ngưỡng cảnh báo: **đỏ** (nguy hiểm) và **vàng** (cảnh báo)
+- Chọn khung giờ cần theo dõi
+- Badge trên icon: số ngày sắp tới có mực nước vượt ngưỡng đỏ
+- Icon đổi màu theo mực nước **giờ hiện tại** (xanh / vàng / đỏ)
+- Tự cập nhật badge mỗi 5 phút (background)
 
-## Installation
-1. Clone this repository:
-   ```sh
-   git clone https://github.com/haon2409/high-tide-alert-extension.git
-   ```
-2. Open your browser and go to the Extensions page:
-   - Chrome: `chrome://extensions/`
-   - Edge: `edge://extensions/`
-3. Enable "Developer Mode."
-4. Click on "Load unpacked" and select the cloned repository folder.
+## Cài đặt
 
-## Usage
-- Configure your preferred locations in the extension settings.
-- Receive alerts when high tide is approaching.
-- Stay informed and plan your activities accordingly.
+1. Mở `chrome://extensions/`
+2. Bật **Developer mode**
+3. **Load unpacked** → chọn thư mục extension này
 
-## Contributing
-Contributions are welcome! Feel free to submit a pull request or open an issue.
+## Cấu hình
 
-## License
-This project is licensed under the MIT License.
+- Bấm ⚙️ để chỉnh ngưỡng đỏ, ngưỡng vàng và các giờ cần kiểm tra
+- Lưu → biểu đồ và badge cập nhật ngay
 
-## Contact
-For any questions or feedback, feel free to reach out via [GitHub Issues](https://github.com/haon2409/high-tide-alert-extension/issues).
+## Màu sắc biểu đồ
+
+| Màu | Ý nghĩa |
+|-----|---------|
+| Xanh | Dưới cả hai ngưỡng |
+| Vàng | ≥ ngưỡng vàng |
+| Đỏ | ≥ ngưỡng đỏ |
+| Sọc chéo | Giờ hiện tại |
+
+## Quyền
+
+- `storage` – lưu cấu hình
+- `alarms` – cập nhật định kỳ
+- `host_permissions` – đọc dữ liệu từ thegioimoicau.com

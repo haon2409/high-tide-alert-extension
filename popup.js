@@ -1,5 +1,16 @@
-document.addEventListener('DOMContentLoaded', function() {
+/**
+ * High Tide Alert - Popup
+ * Hiển thị biểu đồ mực nước + cấu hình ngưỡng & khung giờ
+ */
+
+const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
+const DEFAULT_THRESHOLD = 1.5;
+const DEFAULT_THRESHOLD2 = 2.0;
+const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+document.addEventListener('DOMContentLoaded', () => {
   const tideInfo = document.getElementById('tide-info');
+  const statusEl = document.getElementById('status');
   const thresholdInput = document.getElementById('threshold-input');
   const thresholdSummary = document.getElementById('threshold-summary');
   const thresholdValue = document.getElementById('threshold-value');
@@ -17,22 +28,14 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  function createDiagonalPattern(baseColor) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 16;
-    canvas.height = 16;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(0, 0, 16, 16);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 16);
-    ctx.lineTo(16, 0);
-    ctx.stroke();
-    return ctx.createPattern(canvas, 'repeat');
+  // Đăng ký plugin annotation nếu có
+  if (typeof Chart !== 'undefined' && window['chartjs-plugin-annotation']) {
+    Chart.register(window['chartjs-plugin-annotation']);
+  } else if (typeof ChartAnnotation !== 'undefined') {
+    Chart.register(ChartAnnotation);
   }
 
+  // Tạo checkbox 0–23h
   for (let i = 0; i < 24; i++) {
     const label = document.createElement('label');
     const checkbox = document.createElement('input');
@@ -41,368 +44,403 @@ document.addEventListener('DOMContentLoaded', function() {
     checkbox.value = i;
     checkbox.disabled = true;
     label.appendChild(checkbox);
-    label.append(`${i}h`);
+    label.append(` ${i}h`);
     hoursContainer.appendChild(label);
   }
-  const hoursCheckboxes = Array.from(document.querySelectorAll('#hours-checkboxes input[type="checkbox"]'));
+  const hoursCheckboxes = Array.from(
+    document.querySelectorAll('#hours-checkboxes input[type="checkbox"]')
+  );
 
-  // Load initial values from chrome.storage.local
-  chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'selectedHours'], (result) => {
-    let threshold = result.tideThreshold !== undefined ? parseFloat(result.tideThreshold) : 1.5;
-    let originalThreshold = threshold;
-    thresholdInput.value = threshold;
-    thresholdValue.textContent = threshold.toString().replace('.', ',');
-    
-    let threshold2 = result.tideThreshold2 !== undefined ? parseFloat(result.tideThreshold2) : 2.0;
-    let originalThreshold2 = threshold2;
-    threshold2Input.value = threshold2;
-    threshold2Value.textContent = threshold2.toString().replace('.', ',');
-    
-    let selectedHours = result.selectedHours || Array.from({ length: 24 }, (_, i) => i);
-    let originalSelectedHours = [...selectedHours];
-    hoursCheckboxes.forEach(checkbox => checkbox.checked = selectedHours.includes(parseInt(checkbox.value)));
+  /** Pattern sọc chéo đánh dấu giờ hiện tại */
+  function createDiagonalPattern(baseColor) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 16;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(0, 0, 16, 16);
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 16);
+    ctx.lineTo(16, 0);
+    ctx.stroke();
+    return ctx.createPattern(canvas, 'repeat');
+  }
 
-    function updateHoursSummary() {
-      const ranges = [];
-      let start = null;
-      selectedHours.sort((a, b) => a - b);
-      for (let i = 0; i <= selectedHours.length; i++) {
-        if (i === selectedHours.length || (start !== null && selectedHours[i] !== selectedHours[i - 1] + 1)) {
-          if (start !== null) {
-            ranges.push(start === selectedHours[i - 1] ? `${start}h` : `${start}h→${selectedHours[i - 1]}h`);
-          }
-          start = i < selectedHours.length ? selectedHours[i] : null;
-        } else if (start === null) {
-          start = selectedHours[i];
+  /** Tóm tắt dải giờ đã chọn: "6h→9h, 14h" */
+  function formatHoursSummary(hours) {
+    if (!hours.length) return 'Không có giờ nào';
+    const sorted = [...hours].sort((a, b) => a - b);
+    const ranges = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+    for (let i = 1; i <= sorted.length; i++) {
+      const cur = sorted[i];
+      if (i === sorted.length || cur !== prev + 1) {
+        ranges.push(start === prev ? `${start}h` : `${start}h→${prev}h`);
+        start = cur;
+      }
+      prev = cur;
+    }
+    return ranges.join(', ');
+  }
+
+  /** Parse bảng thủy triều từ HTML (DOMParser – chỉ dùng trong popup) */
+  function parseTideTables(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const tables = Array.from(doc.querySelectorAll('table.table-striped'));
+    const result = [];
+
+    tables.forEach((table) => {
+      let date = '';
+      const raw = [];
+      table.querySelectorAll('.progress-bar').forEach((bar) => {
+        const text = bar.textContent.trim();
+        if (/Dương lịch \d{2}\/\d{2}\/\d{4}/.test(text)) {
+          date = text.replace('Dương lịch ', '');
+        } else if (/^\d{1,2}h$/.test(text) || /^\d+\.\d+m$/.test(text)) {
+          raw.push(text);
         }
-      }
-      hoursSummary.textContent = ranges.join(', ') || 'Không có giờ nào';
-    }
-    updateHoursSummary();
-
-    editBtn.addEventListener('click', () => {
-      thresholdInput.disabled = false;
-      thresholdInput.style.display = 'inline';
-      thresholdSummary.style.display = 'none';
-      threshold2Input.disabled = false;
-      threshold2Input.style.display = 'inline';
-      threshold2Summary.style.display = 'none';
-      hoursCheckboxes.forEach(checkbox => checkbox.disabled = false);
-      editBtn.style.display = 'none';
-      saveBtn.style.display = 'inline';
-      cancelBtn.style.display = 'inline';
-      hoursSummary.style.display = 'none';
-      hoursContainer.style.display = 'block';
-      thresholdInput.focus();
-    });
-
-    saveBtn.addEventListener('click', () => {
-      const newThreshold = parseFloat(thresholdInput.value);
-      const newThreshold2 = parseFloat(threshold2Input.value);
-      if (!isNaN(newThreshold) && newThreshold >= 0 && !isNaN(newThreshold2) && newThreshold2 >= 0) {
-        threshold = newThreshold;
-        threshold2 = newThreshold2;
-        chrome.storage.local.set({ 
-          tideThreshold: threshold,
-          tideThreshold2: threshold2
-        });
-
-        thresholdInput.disabled = true;
-        thresholdInput.style.display = 'none';
-        thresholdSummary.style.display = 'inline';
-        threshold2Input.disabled = true;
-        threshold2Input.style.display = 'none';
-        threshold2Summary.style.display = 'inline';
-        thresholdValue.textContent = threshold.toString().replace('.', ',');
-        threshold2Value.textContent = threshold2.toString().replace('.', ',');
-        
-        selectedHours = hoursCheckboxes.filter(checkbox => checkbox.checked).map(checkbox => parseInt(checkbox.value));
-        chrome.storage.local.set({ selectedHours: selectedHours });
-        
-        hoursCheckboxes.forEach(checkbox => checkbox.disabled = true);
-        editBtn.style.display = 'inline';
-        saveBtn.style.display = 'none';
-        cancelBtn.style.display = 'none';
-        hoursSummary.style.display = 'inline';
-        hoursContainer.style.display = 'none';
-        updateHoursSummary();
-        loadTideData();
-        updateBadge();
-      } else {
-        alert('Vui lòng nhập số hợp lệ >= 0 cho cả hai ngưỡng');
-      }
-    });
-
-    cancelBtn.addEventListener('click', () => {
-      thresholdInput.value = originalThreshold;
-      thresholdInput.disabled = true;
-      thresholdInput.style.display = 'none';
-      thresholdSummary.style.display = 'inline';
-      thresholdValue.textContent = originalThreshold.toString().replace('.', ',');
-      threshold2Input.value = originalThreshold2;
-      threshold2Input.disabled = true;
-      threshold2Input.style.display = 'none';
-      threshold2Summary.style.display = 'inline';
-      threshold2Value.textContent = originalThreshold2.toString().replace('.', ',');
-      hoursCheckboxes.forEach(checkbox => {
-        checkbox.checked = originalSelectedHours.includes(parseInt(checkbox.value));
-        checkbox.disabled = true;
       });
-      editBtn.style.display = 'inline';
-      saveBtn.style.display = 'none';
-      cancelBtn.style.display = 'none';
-      hoursSummary.style.display = 'inline';
-      hoursContainer.style.display = 'none';
-      updateHoursSummary();
+
+      const labels = [];
+      const data = [];
+      for (let i = 0; i < raw.length - 1; i += 2) {
+        labels.push(raw[i]);
+        data.push(parseFloat(raw[i + 1]));
+      }
+      if (date && labels.length) {
+        result.push({ date, labels, data });
+      }
     });
+    return result;
+  }
 
-    function loadTideData() {
-      tideInfo.textContent = 'Đang tải dữ liệu...';
-      fetch('https://thegioimoicau.com/dia-danh/sai-gon/trang-1', {
-        method: 'GET',
-        headers: {'Accept': 'text/html', 'Content-Type': 'text/html; charset=UTF-8'}
-      })
-        .then(response => response.text())
-        .then(html => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-          const tables = doc.querySelectorAll('table.table-striped');
-          if (tables.length === 0) {
-            tideInfo.textContent = 'Không tìm thấy bảng dữ liệu.';
-            return;
-          }
-          tideInfo.textContent = '';
-          tables.forEach((table, index) => {
-            const progressBars = table.querySelectorAll('.progress-bar');
-            let date = '', tideData = [];
-            progressBars.forEach(bar => {
-              const text = bar.textContent.trim();
-              if (text.match(/Dương lịch \d{2}\/\d{2}\/\d{4}/)) date = text.replace('Dương lịch ', '');
-              if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
-            });
-            if (date && tideData.length > 0) {
-              const [day, month, year] = date.split('/');
-              const dateObj = new Date(`${year}-${month}-${day}`);
-              const formattedDate = `${dateObj.toLocaleDateString('vi-VN', { weekday: 'long' })}, ${date}:`;
-
-              const dateDiv = document.createElement('div');
-              dateDiv.className = 'date';            
-              dateDiv.innerHTML = `<span class="date-value">${formattedDate}</span>`;
-              tideInfo.appendChild(dateDiv);
-    
-              const labels = [], data = [];
-              for (let i = 0; i < tideData.length - 1; i += 2) {
-                labels.push(tideData[i]);
-                data.push(parseFloat(tideData[i + 1]));
-              }
-    
-              const currentHour = new Date().getHours();
-              const barColors = data.map((level, idx) => {
-                const hour = parseInt(labels[idx].replace('h', ''));
-                let baseColor = 'rgba(54, 162, 235, 1)'; // Xanh: Không vượt ngưỡng
-                
-                if (level >= threshold2) {
-                  baseColor = 'rgba(255, 215, 0, 1)'; // Vàng: Vượt ngưỡng 2
-                }
-                if (level >= threshold) {
-                  baseColor = 'rgba(255, 0, 0, 1)'; // Đỏ: Vượt ngưỡng 1
-                }
-
-                if (index === 0 && hour === currentHour) {
-                  return createDiagonalPattern(baseColor);
-                }
-                return baseColor;
-              });
-    
-              const canvas = document.createElement('canvas');
-              canvas.id = `tideChart-${index}`;
-              canvas.className = 'tide-chart';
-              tideInfo.appendChild(canvas);
-    
-              new Chart(canvas.getContext('2d'), {
-                type: 'bar',
-                data: {
-                  labels,
-                  datasets: [{
-                    label: 'Mực nước (m)',
-                    data,
-                    backgroundColor: barColors,
-                    borderColor: barColors,
-                    borderWidth: 1
-                  }]
-                },
-                options: {
-                  scales: {
-                    x: { title: { display: true, text: 'Thời gian' } },
-                    y: { beginAtZero: true, title: { display: true, text: 'Mực nước (m)' } }
-                  },
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: context => `${context.parsed.y}m` } },
-                    annotation: {
-                      annotations: {
-                        thresholdLine: {
-                          type: 'line',
-                          yMin: threshold,
-                          yMax: threshold,
-                          borderColor: '#d32f2f',
-                          borderWidth: 2,
-                          borderDash: [5, 5],
-                          label: {
-                            enabled: true,
-                            content: `Ngưỡng: ${threshold}m`,
-                            position: 'end',
-                            backgroundColor: 'rgba(211, 47, 47, 0.8)',
-                            color: '#fff',
-                            padding: 4
-                          }
-                        },
-                        threshold2Line: {
-                          type: 'line',
-                          yMin: threshold2,
-                          yMax: threshold2,
-                          borderColor: '#ff8f00',
-                          borderWidth: 2,
-                          borderDash: [5, 5],
-                          label: {
-                            enabled: true,
-                            content: `Ngưỡng 2: ${threshold2}m`,
-                            position: 'end',
-                            backgroundColor: 'rgba(255, 143, 0, 0.8)',
-                            color: '#fff',
-                            padding: 4
-                          }
-                        },
-                        ...(() => {
-                          const boundaryHours = [];
-                          const ranges = [];
-                          selectedHours.sort((a, b) => a - b);
-                          let start = selectedHours[0];
-                          let prev = start;
-              
-                          for (let i = 1; i <= selectedHours.length; i++) {
-                            const current = selectedHours[i];
-                            if (current !== prev + 1 || i === selectedHours.length) {
-                              boundaryHours.push(start);
-                              boundaryHours.push(prev);
-                              ranges.push({ start, end: prev });
-                              start = current;
-                            }
-                            prev = current || prev;
-                          }
-              
-                          const annotations = {};
-              
-                          boundaryHours.forEach((hour, index) => {
-                            annotations[`verticalLine${hour}`] = {
-                              type: 'line',
-                              xMin: `${hour}h`,
-                              xMax: `${hour}h`,
-                              borderColor: '#00c853',
-                              borderWidth: 2,
-                              borderDash: [5, 5],
-                              label: {
-                                enabled: true,
-                                content: `${hour}h`,
-                                position: 'top',
-                                backgroundColor: 'rgba(0, 200, 83, 0.8)',
-                                color: '#fff',
-                                padding: 4
-                              }
-                            };
-                          });
-              
-                          ranges.forEach((range, index) => {
-                            annotations[`highlightRange${index}`] = {
-                              type: 'box',
-                              xMin: `${range.start}h`,
-                              xMax: `${range.end}h`,
-                              yMin: 0,
-                              yMax: Math.max(...data) * 1.1,
-                              backgroundColor: 'rgba(2,136,209, 0.35)',
-                              borderWidth: 0
-                            };
-                          });
-              
-                          return annotations;
-                        })()
-                      }
-                    }
-                  }
-                }
-              });
-            }
-          });
-          updateBadge();
-        })
-        .catch(error => tideInfo.textContent = `Lỗi: ${error.message}`);
-    }
-
-    function updateBadge() {
-      fetch('https://thegioimoicau.com/dia-danh/sai-gon/trang-1', {
-        method: 'GET',
-        headers: {'Accept': 'text/html', 'Content-Type': 'text/html; charset=UTF-8'}
-      })
-        .then(response => response.text())
-        .then(html => {
-          chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'selectedHours'], (result) => {
-            const threshold = parseFloat(result.tideThreshold || 1.5);
-            const threshold2 = parseFloat(result.tideThreshold2 || 2.0);
-            const selectedHours = result.selectedHours || Array.from({ length: 24 }, (_, i) => i);
+  /** Cập nhật badge + icon (gọi sau khi lưu cấu hình) */
+  function updateBadge() {
+    fetch(TIDE_URL, {
+      method: 'GET',
+      headers: { Accept: 'text/html', 'Content-Type': 'text/html; charset=UTF-8' }
+    })
+      .then((r) => r.text())
+      .then((html) => {
+        chrome.storage.local.get(
+          ['tideThreshold', 'tideThreshold2', 'selectedHours'],
+          (result) => {
+            const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
+            const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
+            const selectedHours =
+              Array.isArray(result.selectedHours) && result.selectedHours.length
+                ? result.selectedHours
+                : DEFAULT_HOURS;
             const currentHour = new Date().getHours();
-            const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
+            const today = new Date().toLocaleDateString('vi-VN', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            });
 
-            let redDays = [];
+            const tables = parseTideTables(html).slice(0, 3);
+            const redDays = [];
             let currentHourLevel = null;
 
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const tables = Array.from(doc.querySelectorAll('table.table-striped')).slice(0, 3);
-
-            tables.forEach((table, idx) => {
-              const tideData = [];
-              let date = '';
-              table.querySelectorAll('.progress-bar').forEach(bar => {
-                const text = bar.textContent.trim();
-                if (text.match(/Dương lịch \d{2}\/\d{2}\/\d{4}/)) date = text.replace('Dương lịch ', '');
-                if (text.match(/\d{1,2}h/) || text.match(/\d\.\d{1,2}m/)) tideData.push(text);
-              });
-              for (let i = 0; i < tideData.length - 1; i += 2) {
-                const hour = parseInt(tideData[i].replace('h', ''));
-                const level = parseFloat(tideData[i + 1]);
+            tables.forEach((t, idx) => {
+              t.labels.forEach((label, i) => {
+                const hour = parseInt(label.replace('h', ''), 10);
+                const level = t.data[i];
                 if (selectedHours.includes(hour) && level >= threshold) {
-                  if (redDays.indexOf(idx + 1) === -1) redDays.push(idx + 1);
+                  if (!redDays.includes(idx + 1)) redDays.push(idx + 1);
                 }
-                if (idx === 0 && date === today && hour === currentHour) {
+                if (idx === 0 && t.date === today && hour === currentHour) {
                   currentHourLevel = level;
                 }
-              }
+              });
             });
 
-            if (redDays.length > 0) {
-              const badgeText = redDays.join('');
-              chrome.action.setBadgeText({ text: badgeText });
+            if (redDays.length) {
+              chrome.action.setBadgeText({ text: redDays.join('') });
               chrome.action.setBadgeBackgroundColor({ color: '#EA4335' });
               chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
             } else {
               chrome.action.setBadgeText({ text: '' });
             }
 
+            let icon = 'icon64.png';
             if (currentHourLevel !== null) {
-              if (currentHourLevel >= threshold) {
-                chrome.action.setIcon({ path: 'icon64_red.png' });
-              } else if (currentHourLevel >= threshold2) {
-                chrome.action.setIcon({ path: 'icon64_yellow.png' });
-              } else {
-                chrome.action.setIcon({ path: 'icon64.png' });
-              }
-            } else {
-              chrome.action.setIcon({ path: 'icon64.png' });
+              if (currentHourLevel >= threshold) icon = 'icon64_red.png';
+              else if (currentHourLevel >= threshold2) icon = 'icon64_yellow.png';
             }
-          });
-        });
+            chrome.action.setIcon({ path: icon });
+          }
+        );
+      })
+      .catch((e) => console.error('updateBadge:', e.message));
+  }
+
+  /** Vẽ biểu đồ cho một ngày */
+  function renderChart(container, { date, labels, data }, index, threshold, threshold2, selectedHours) {
+    const [day, month, year] = date.split('/');
+    const dateObj = new Date(`${year}-${month}-${day}`);
+    const weekday = dateObj.toLocaleDateString('vi-VN', { weekday: 'long' });
+
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'date';
+    dateDiv.innerHTML = `<span class="date-value">${weekday}, ${date}:</span>`;
+    container.appendChild(dateDiv);
+
+    const currentHour = new Date().getHours();
+    const barColors = data.map((level, idx) => {
+      const hour = parseInt(labels[idx].replace('h', ''), 10);
+      // Ưu tiên đỏ (threshold) > vàng (threshold2) > xanh
+      let base = 'rgba(54, 162, 235, 1)';
+      if (level >= threshold2) base = 'rgba(255, 215, 0, 1)';
+      if (level >= threshold) base = 'rgba(255, 0, 0, 1)';
+      if (index === 0 && hour === currentHour) {
+        return createDiagonalPattern(base);
+      }
+      return base;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'tide-chart';
+    container.appendChild(canvas);
+
+    // Annotation: đường ngưỡng + vùng giờ đã chọn
+    const annotations = {
+      thresholdLine: {
+        type: 'line',
+        yMin: threshold,
+        yMax: threshold,
+        borderColor: '#d32f2f',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        label: {
+          display: true,
+          content: `Đỏ: ${threshold}m`,
+          position: 'end',
+          backgroundColor: 'rgba(211,47,47,0.85)',
+          color: '#fff',
+          padding: 3,
+          font: { size: 10 }
+        }
+      },
+      threshold2Line: {
+        type: 'line',
+        yMin: threshold2,
+        yMax: threshold2,
+        borderColor: '#ff8f00',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        label: {
+          display: true,
+          content: `Vàng: ${threshold2}m`,
+          position: 'end',
+          backgroundColor: 'rgba(255,143,0,0.85)',
+          color: '#fff',
+          padding: 3,
+          font: { size: 10 }
+        }
+      }
+    };
+
+    // Highlight các dải giờ đã chọn
+    if (selectedHours.length) {
+      const sorted = [...selectedHours].sort((a, b) => a - b);
+      let start = sorted[0];
+      let prev = sorted[0];
+      const ranges = [];
+      for (let i = 1; i <= sorted.length; i++) {
+        const cur = sorted[i];
+        if (i === sorted.length || cur !== prev + 1) {
+          ranges.push({ start, end: prev });
+          start = cur;
+        }
+        prev = cur;
+      }
+      const yMax = Math.max(...data, threshold, threshold2) * 1.15;
+      ranges.forEach((r, i) => {
+        annotations[`range${i}`] = {
+          type: 'box',
+          xMin: `${r.start}h`,
+          xMax: `${r.end}h`,
+          yMin: 0,
+          yMax,
+          backgroundColor: 'rgba(2,136,209,0.28)',
+          borderWidth: 0
+        };
+      });
     }
 
-    loadTideData();
-  });
+    new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Mực nước (m)',
+          data,
+          backgroundColor: barColors,
+          borderColor: barColors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          x: { title: { display: true, text: 'Thời gian', font: { size: 11 } } },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Mực nước (m)', font: { size: 11 } }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.parsed.y} m` }
+          },
+          annotation: { annotations }
+        }
+      }
+    });
+  }
+
+  function loadTideData(threshold, threshold2, selectedHours) {
+    statusEl.textContent = 'Đang tải dữ liệu...';
+    tideInfo.innerHTML = '';
+
+    fetch(TIDE_URL, {
+      method: 'GET',
+      headers: { Accept: 'text/html', 'Content-Type': 'text/html; charset=UTF-8' }
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then((html) => {
+        const tables = parseTideTables(html);
+        if (!tables.length) {
+          statusEl.textContent = 'Không tìm thấy bảng dữ liệu.';
+          return;
+        }
+        statusEl.textContent = '';
+        tables.forEach((t, idx) => {
+          renderChart(tideInfo, t, idx, threshold, threshold2, selectedHours);
+        });
+        updateBadge();
+      })
+      .catch((err) => {
+        statusEl.textContent = `Lỗi: ${err.message}`;
+      });
+  }
+
+  // ---- Load cấu hình & gắn sự kiện ----
+  chrome.storage.local.get(
+    ['tideThreshold', 'tideThreshold2', 'selectedHours'],
+    (result) => {
+      let threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
+      let threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
+      let selectedHours =
+        Array.isArray(result.selectedHours) && result.selectedHours.length
+          ? result.selectedHours
+          : [...DEFAULT_HOURS];
+
+      let originalThreshold = threshold;
+      let originalThreshold2 = threshold2;
+      let originalSelectedHours = [...selectedHours];
+
+      thresholdInput.value = threshold;
+      thresholdValue.textContent = String(threshold).replace('.', ',');
+      threshold2Input.value = threshold2;
+      threshold2Value.textContent = String(threshold2).replace('.', ',');
+      hoursCheckboxes.forEach((cb) => {
+        cb.checked = selectedHours.includes(parseInt(cb.value, 10));
+      });
+      hoursSummary.textContent = formatHoursSummary(selectedHours);
+
+      editBtn.addEventListener('click', () => {
+        thresholdInput.disabled = false;
+        thresholdInput.style.display = 'inline';
+        thresholdSummary.style.display = 'none';
+        threshold2Input.disabled = false;
+        threshold2Input.style.display = 'inline';
+        threshold2Summary.style.display = 'none';
+        hoursCheckboxes.forEach((cb) => (cb.disabled = false));
+        hoursContainer.style.display = 'flex';
+        hoursSummary.style.display = 'none';
+        editBtn.style.display = 'none';
+        saveBtn.style.display = 'inline';
+        cancelBtn.style.display = 'inline';
+        thresholdInput.focus();
+      });
+
+      saveBtn.addEventListener('click', () => {
+        const newT = parseFloat(thresholdInput.value);
+        const newT2 = parseFloat(threshold2Input.value);
+        if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0) {
+          alert('Vui lòng nhập số hợp lệ ≥ 0 cho cả hai ngưỡng.');
+          return;
+        }
+        threshold = newT;
+        threshold2 = newT2;
+        selectedHours = hoursCheckboxes
+          .filter((cb) => cb.checked)
+          .map((cb) => parseInt(cb.value, 10));
+
+        chrome.storage.local.set({
+          tideThreshold: threshold,
+          tideThreshold2: threshold2,
+          selectedHours
+        });
+
+        originalThreshold = threshold;
+        originalThreshold2 = threshold2;
+        originalSelectedHours = [...selectedHours];
+
+        thresholdValue.textContent = String(threshold).replace('.', ',');
+        threshold2Value.textContent = String(threshold2).replace('.', ',');
+        hoursSummary.textContent = formatHoursSummary(selectedHours);
+
+        // Khóa lại UI
+        thresholdInput.disabled = true;
+        thresholdInput.style.display = 'none';
+        thresholdSummary.style.display = 'inline';
+        threshold2Input.disabled = true;
+        threshold2Input.style.display = 'none';
+        threshold2Summary.style.display = 'inline';
+        hoursCheckboxes.forEach((cb) => (cb.disabled = true));
+        hoursContainer.style.display = 'none';
+        hoursSummary.style.display = 'inline';
+        editBtn.style.display = 'inline';
+        saveBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+
+        loadTideData(threshold, threshold2, selectedHours);
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        thresholdInput.value = originalThreshold;
+        threshold2Input.value = originalThreshold2;
+        hoursCheckboxes.forEach((cb) => {
+          cb.checked = originalSelectedHours.includes(parseInt(cb.value, 10));
+          cb.disabled = true;
+        });
+        thresholdInput.disabled = true;
+        thresholdInput.style.display = 'none';
+        thresholdSummary.style.display = 'inline';
+        threshold2Input.disabled = true;
+        threshold2Input.style.display = 'none';
+        threshold2Summary.style.display = 'inline';
+        hoursContainer.style.display = 'none';
+        hoursSummary.style.display = 'inline';
+        hoursSummary.textContent = formatHoursSummary(originalSelectedHours);
+        editBtn.style.display = 'inline';
+        saveBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+      });
+
+      loadTideData(threshold, threshold2, selectedHours);
+    }
+  );
 });
