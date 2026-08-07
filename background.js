@@ -46,16 +46,24 @@ function parseTideTables(html, maxTables = 3) {
     }
 
     const entries = [];
+    const labels = [];
+    const data = [];
+    
     for (let j = 0; j < tideData.length - 1; j += 2) {
-      const hour = parseInt(tideData[j].replace('h', ''), 10);
+      const hourStr = tideData[j];
+      const hour = parseInt(hourStr.replace('h', ''), 10);
       const level = parseFloat(tideData[j + 1]);
+      
       if (!isNaN(hour) && !isNaN(level)) {
         entries.push({ hour, level });
+        labels.push(hourStr);
+        data.push(level);
       }
     }
 
     if (date && entries.length) {
-      result.push({ date, entries });
+      // Cấu trúc dữ liệu hợp nhất cho cả background (entries) và popup (labels, data)
+      result.push({ date, entries, labels, data });
     }
   }
   return result;
@@ -125,7 +133,6 @@ function drawExtensionIcon(tables, threshold, threshold2) {
     ctx.fillRect(x, y, colWidth, h);
   });
 
-  // Vẽ đường màu đỏ nằm cạnh trên cùng logo
   ctx.fillStyle = 'rgba(255, 0, 0, 1)';
   ctx.fillRect(0, 0, 32, 3);
 
@@ -154,6 +161,10 @@ function updateDynamicIcon() {
         const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
         const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
         const tables = parseTideTables(html, 4); 
+        
+        // Single Source of Truth: Lưu cấu trúc hoàn chỉnh vào Local Storage
+        chrome.storage.local.set({ tideData: tables });
+        
         drawExtensionIcon(tables, threshold, threshold2);
       });
     })

@@ -3,7 +3,6 @@
  * Hiển thị biểu đồ mực nước + cấu hình ngưỡng
  */
 
-const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
 const DEFAULT_THRESHOLD = 1.5;
 const DEFAULT_THRESHOLD2 = 2.0;
 
@@ -19,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const editBtn = document.getElementById('edit-btn');
   const saveBtn = document.getElementById('save-btn');
   const cancelBtn = document.getElementById('cancel-btn');
+
+  let chartInstances = []; // Quản lý bộ nhớ các instance biểu đồ
 
   if (typeof Chart === 'undefined') {
     tideInfo.textContent = 'Lỗi: Không thể tải Chart.js.';
@@ -45,37 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.lineTo(16, 0);
     ctx.stroke();
     return ctx.createPattern(canvas, 'repeat');
-  }
-
-  function parseTideTables(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const tables = Array.from(doc.querySelectorAll('table.table-striped'));
-    const result = [];
-
-    tables.forEach((table) => {
-      let date = '';
-      const raw = [];
-      table.querySelectorAll('.progress-bar').forEach((bar) => {
-        const text = bar.textContent.trim();
-        if (/Dương lịch \d{2}\/\d{2}\/\d{4}/.test(text)) {
-          date = text.replace('Dương lịch ', '');
-        } else if (/^\d{1,2}h$/.test(text) || /^\d+\.\d+m$/.test(text)) {
-          raw.push(text);
-        }
-      });
-
-      const labels = [];
-      const data = [];
-      for (let i = 0; i < raw.length - 1; i += 2) {
-        labels.push(raw[i]);
-        data.push(parseFloat(raw[i + 1]));
-      }
-      if (date && labels.length) {
-        result.push({ date, labels, data });
-      }
-    });
-    return result;
   }
 
   function renderChart(container, { date, labels, data }, index, threshold, threshold2) {
@@ -123,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    new Chart(canvas.getContext('2d'), {
+    const newChart = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: {
         labels,
@@ -142,34 +112,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
+    // Lưu instance để dọn dẹp sau
+    chartInstances.push(newChart);
   }
 
   function loadTideData(threshold, threshold2) {
-    statusEl.textContent = 'Đang tải dữ liệu...';
+    statusEl.textContent = 'Đang đọc dữ liệu...';
+    
+    // Hủy các biểu đồ cũ trước khi render lại để tránh lỗi đè (flickering)
+    chartInstances.forEach(chart => chart.destroy());
+    chartInstances = [];
     tideInfo.innerHTML = '';
 
-    fetch(TIDE_URL, {
-      method: 'GET',
-      headers: { Accept: 'text/html', 'Content-Type': 'text/html; charset=UTF-8' }
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then((html) => {
-        const tables = parseTideTables(html);
-        if (!tables || !tables.length) {
-          statusEl.textContent = 'Không tìm thấy bảng dữ liệu hoặc dữ liệu trống.';
-          return;
-        }
-        statusEl.textContent = '';
-        tables.forEach((t, idx) => {
-          renderChart(tideInfo, t, idx, threshold, threshold2);
-        });              
-      })
-      .catch((err) => {
-        statusEl.textContent = `Lỗi: ${err.message}`;
+    // Lấy dữ liệu đã được parse sẵn từ background
+    chrome.storage.local.get(['tideData'], (result) => {
+      const tables = result.tideData;
+      if (!tables || !tables.length) {
+        statusEl.textContent = 'Đang đồng bộ dữ liệu. Vui lòng mở lại sau ít phút.';
+        return;
+      }
+      statusEl.textContent = '';
+      tables.forEach((t, idx) => {
+        renderChart(tideInfo, t, idx, threshold, threshold2);
       });
+    });
   }
 
   chrome.storage.local.get(['tideThreshold', 'tideThreshold2'], (result) => {
