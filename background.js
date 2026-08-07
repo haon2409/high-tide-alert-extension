@@ -8,19 +8,19 @@ const DEFAULT_THRESHOLD = 1.5;
 const DEFAULT_THRESHOLD2 = 2.0;
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create('updateBadgeAlarm', { periodInMinutes: 5 });
-  updateBadge();
+  chrome.alarms.create('updateIconAlarm', { periodInMinutes: 5 });
+  updateDynamicIcon();
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'local' && (changes.tideThreshold || changes.tideThreshold2)) {
-    updateBadge();
+    updateDynamicIcon();
   }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'updateBadgeAlarm') {
-    updateBadge();
+  if (alarm.name === 'updateIconAlarm') {
+    updateDynamicIcon();
   }
 });
 
@@ -69,7 +69,7 @@ function getTodayString() {
   });
 }
 
-function updateIcon(tables, threshold, threshold2) {
+function drawExtensionIcon(tables, threshold, threshold2) {
   const flatData = [];
   tables.forEach(t => {
     t.entries.forEach(e => {
@@ -127,20 +127,18 @@ function updateIcon(tables, threshold, threshold2) {
   });
 
   const imageData = ctx.getImageData(0, 0, 32, 32);
-  
   chrome.action.setIcon({ imageData: imageData });
 
-  // Cập nhật tooltip (hiện khi hover vào icon)
+  // Cập nhật tooltip ngắn gọn
   if (currentIndex !== -1 && flatData[currentIndex]) {
     const currentData = flatData[currentIndex];
-    const titleText = `Giờ hiện tại (${currentData.hour}h): ${currentData.level}m`;
-    chrome.action.setTitle({ title: titleText });
+    chrome.action.setTitle({ title: `${currentData.level}m` });
   } else {
     chrome.action.setTitle({ title: 'High Tide Alert' });
   }
 }
 
-function updateBadge() {
+function updateDynamicIcon() {
   fetch(TIDE_URL, {
     method: 'GET',
     headers: { Accept: 'text/html', 'Content-Type': 'text/html; charset=UTF-8' }
@@ -154,7 +152,7 @@ function updateBadge() {
         const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
         const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
         const tables = parseTideTables(html, 4); 
-        updateIcon(tables, threshold, threshold2);
+        drawExtensionIcon(tables, threshold, threshold2);
       });
     })
     .catch((err) => {

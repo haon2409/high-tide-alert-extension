@@ -158,8 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .then((html) => {
         const tables = parseTideTables(html);
-        if (!tables.length) {
-          statusEl.textContent = 'Không tìm thấy bảng dữ liệu.';
+        if (!tables || !tables.length) {
+          statusEl.textContent = 'Không tìm thấy bảng dữ liệu hoặc dữ liệu trống.';
           return;
         }
         statusEl.textContent = '';
@@ -207,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
       threshold = newT;
       threshold2 = newT2;
     
-      // Lưu vào storage, background.js sẽ tự bắt sự kiện này để cập nhật icon
       chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2 });
     
       originalThreshold = threshold;
