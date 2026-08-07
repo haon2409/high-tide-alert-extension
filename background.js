@@ -1,6 +1,6 @@
 /**
  * High Tide Alert - Background Service Worker
- * Vẽ icon 5 cột động (T-1 đến T+3) dựa trên mực nước thủy triều
+ * Vẽ icon 5 cột động (T đến T+4) dựa trên mực nước thủy triều
  */
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
@@ -82,8 +82,16 @@ function drawExtensionIcon(tables, threshold, threshold2) {
   const currentIndex = flatData.findIndex(d => d.date === today && d.hour === currentHour);
 
   const targetLevels = [];
+  let prevLevel = 0;
+
   if (currentIndex !== -1) {
-    for (let i = currentIndex - 1; i <= currentIndex + 3; i++) {
+    // Lấy mực nước T-1 phục vụ so sánh
+    if (currentIndex - 1 >= 0 && currentIndex - 1 < flatData.length) {
+      prevLevel = flatData[currentIndex - 1].level;
+    }
+
+    // Lấy 5 cột từ T đến T+4
+    for (let i = currentIndex; i <= currentIndex + 4; i++) {
       if (i >= 0 && i < flatData.length) {
         targetLevels.push(flatData[i].level);
       } else {
@@ -92,6 +100,16 @@ function drawExtensionIcon(tables, threshold, threshold2) {
     }
   } else {
     targetLevels.push(0, 0, 0, 0, 0);
+  }
+
+  // Xác định màu dấu chấm vuông ở cột T
+  const currentLevel = targetLevels[0];
+  let indicatorColor = 'rgba(255, 255, 0, 1)'; // Vàng (T-1 = T)
+
+  if (prevLevel > currentLevel) {
+    indicatorColor = 'rgba(255, 0, 0, 1)'; // Đỏ (T-1 > T)
+  } else if (prevLevel < currentLevel) {
+    indicatorColor = 'rgba(0, 255, 0, 1)'; // Xanh (T-1 < T)
   }
 
   const canvas = new OffscreenCanvas(32, 32);
@@ -120,8 +138,9 @@ function drawExtensionIcon(tables, threshold, threshold2) {
 
     ctx.fillRect(x, y, colWidth, h);
 
-    if (idx === 1) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    // Đánh dấu chấm vuông ở chân cột T (idx = 0)
+    if (idx === 0) {
+      ctx.fillStyle = indicatorColor;
       ctx.fillRect(x, 32 - 4, colWidth, 4);
     }
   });
@@ -129,7 +148,6 @@ function drawExtensionIcon(tables, threshold, threshold2) {
   const imageData = ctx.getImageData(0, 0, 32, 32);
   chrome.action.setIcon({ imageData: imageData });
 
-  // Cập nhật tooltip ngắn gọn
   if (currentIndex !== -1 && flatData[currentIndex]) {
     const currentData = flatData[currentIndex];
     chrome.action.setTitle({ title: `${currentData.level}m` });
