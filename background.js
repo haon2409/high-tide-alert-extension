@@ -85,12 +85,10 @@ function drawExtensionIcon(tables, threshold, threshold2) {
   let prevLevel = 0;
 
   if (currentIndex !== -1) {
-    // Lấy mực nước T-1 phục vụ so sánh
     if (currentIndex - 1 >= 0 && currentIndex - 1 < flatData.length) {
       prevLevel = flatData[currentIndex - 1].level;
     }
 
-    // Lấy 5 cột từ T đến T+4
     for (let i = currentIndex; i <= currentIndex + 4; i++) {
       if (i >= 0 && i < flatData.length) {
         targetLevels.push(flatData[i].level);
@@ -102,33 +100,40 @@ function drawExtensionIcon(tables, threshold, threshold2) {
     targetLevels.push(0, 0, 0, 0, 0);
   }
 
-  // Xác định màu dấu chấm vuông ở cột T
+  // Xác định màu nền theo quy tắc mới
   const currentLevel = targetLevels[0];
-  let indicatorColor = 'rgba(255, 255, 0, 1)'; // Vàng (T-1 = T)
+  let bgColor = 'rgba(255, 255, 0, 0.25)'; // Vàng (T = T-1)
 
-  if (prevLevel > currentLevel) {
-    indicatorColor = 'rgba(255, 0, 0, 1)'; // Đỏ (T-1 > T)
-  } else if (prevLevel < currentLevel) {
-    indicatorColor = 'rgba(0, 255, 0, 1)'; // Xanh (T-1 < T)
+  if (currentLevel > prevLevel) {
+    bgColor = 'rgba(255, 0, 0, 0.25)'; // Đỏ (T > T-1)
+  } else if (currentLevel < prevLevel) {
+    bgColor = 'rgba(0, 255, 0, 0.25)'; // Xanh (T < T-1)
   }
 
   const canvas = new OffscreenCanvas(32, 32);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 32, 32);
 
-  const maxLevel = Math.max(...targetLevels, 2.5);
-  const colWidth = 5;
+  // Phủ màu nền cho toàn bộ Logo
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, 32, 32);
+
+  const maxUsableHeight = 29;
+  const colWidth = 5.6;
   const gap = 1;
-  const startX = 1;
+  const startX = 0;
 
   targetLevels.forEach((level, idx) => {
     if (level === 0) return;
     
-    const h = Math.max((level / maxLevel) * 32, 1);
+    const ratio = Math.min(1, level / threshold);
+    const h = Math.max(1, ratio * maxUsableHeight);
     const x = startX + idx * (colWidth + gap);
     const y = 32 - h;
 
-    if (level >= threshold) {
+    if (level > threshold) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+    } else if (level === threshold) {
       ctx.fillStyle = 'rgba(255, 0, 0, 1)';
     } else if (level >= threshold2) {
       ctx.fillStyle = 'rgba(255, 215, 0, 1)';
@@ -137,13 +142,11 @@ function drawExtensionIcon(tables, threshold, threshold2) {
     }
 
     ctx.fillRect(x, y, colWidth, h);
-
-    // Đánh dấu chấm vuông ở chân cột T (idx = 0)
-    if (idx === 0) {
-      ctx.fillStyle = indicatorColor;
-      ctx.fillRect(x, 32 - 4, colWidth, 4);
-    }
   });
+
+  // Vẽ đường màu đỏ nằm cạnh trên cùng logo
+  ctx.fillStyle = 'rgba(255, 0, 0, 1)';
+  ctx.fillRect(0, 0, 32, 3);
 
   const imageData = ctx.getImageData(0, 0, 32, 32);
   chrome.action.setIcon({ imageData: imageData });
