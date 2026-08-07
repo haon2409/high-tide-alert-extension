@@ -82,13 +82,8 @@ function drawExtensionIcon(tables, threshold, threshold2) {
   const currentIndex = flatData.findIndex(d => d.date === today && d.hour === currentHour);
 
   const targetLevels = [];
-  let prevLevel = 0;
 
   if (currentIndex !== -1) {
-    if (currentIndex - 1 >= 0 && currentIndex - 1 < flatData.length) {
-      prevLevel = flatData[currentIndex - 1].level;
-    }
-
     for (let i = currentIndex; i <= currentIndex + 4; i++) {
       if (i >= 0 && i < flatData.length) {
         targetLevels.push(flatData[i].level);
@@ -100,23 +95,9 @@ function drawExtensionIcon(tables, threshold, threshold2) {
     targetLevels.push(0, 0, 0, 0, 0);
   }
 
-  // Xác định màu nền theo quy tắc mới
-  const currentLevel = targetLevels[0];
-  let bgColor = 'rgba(255, 255, 0, 0.25)'; // Vàng (T = T-1)
-
-  if (currentLevel > prevLevel) {
-    bgColor = 'rgba(255, 0, 0, 0.25)'; // Đỏ (T > T-1)
-  } else if (currentLevel < prevLevel) {
-    bgColor = 'rgba(0, 255, 0, 0.25)'; // Xanh (T < T-1)
-  }
-
   const canvas = new OffscreenCanvas(32, 32);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 32, 32);
-
-  // Phủ màu nền cho toàn bộ Logo
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, 32, 32);
 
   const maxUsableHeight = 29;
   const colWidth = 5.6;
