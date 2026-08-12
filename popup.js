@@ -5,6 +5,7 @@
 
 const DEFAULT_THRESHOLD = 1.5;
 const DEFAULT_THRESHOLD2 = 2.0;
+const DEFAULT_COLUMNS = 12;
 
 document.addEventListener('DOMContentLoaded', () => {
   const tideInfo = document.getElementById('tide-info');
@@ -18,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const editBtn = document.getElementById('edit-btn');
   const saveBtn = document.getElementById('save-btn');
   const cancelBtn = document.getElementById('cancel-btn');
+  const columnsInput = document.getElementById('columns-input');
+  const columnsSummary = document.getElementById('columns-summary');
+  const columnsValue = document.getElementById('columns-value');
 
   let chartInstances = []; // Quản lý bộ nhớ các instance biểu đồ
 
@@ -142,14 +146,18 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.local.get(['tideThreshold', 'tideThreshold2'], (result) => {
     let threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
     let threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
+    let columns = parseInt(result.iconColumns ?? DEFAULT_COLUMNS, 10); // Thêm biến columns
 
     let originalThreshold = threshold;
     let originalThreshold2 = threshold2;
+    let originalColumns = columns; // Lưu giá trị gốc
 
     thresholdInput.value = threshold;
     thresholdValue.textContent = String(threshold).replace('.', ',');
     threshold2Input.value = threshold2;
     threshold2Value.textContent = String(threshold2).replace('.', ',');
+    columnsInput.value = columns;
+    columnsValue.textContent = columns;
 
     editBtn.addEventListener('click', () => {
       thresholdInput.disabled = false;
@@ -158,6 +166,10 @@ document.addEventListener('DOMContentLoaded', () => {
       threshold2Input.disabled = false;
       threshold2Input.style.display = 'inline';
       threshold2Summary.style.display = 'none';
+      columnsInput.disabled = false;
+      columnsInput.style.display = 'inline';
+      columnsSummary.style.display = 'none';
+
       editBtn.style.display = 'none';
       saveBtn.style.display = 'inline';
       cancelBtn.style.display = 'inline';
@@ -167,27 +179,35 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', () => {
       const newT = parseFloat(thresholdInput.value);
       const newT2 = parseFloat(threshold2Input.value);
-      if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0) {
-        alert('Vui lòng nhập số hợp lệ ≥ 0 cho cả hai ngưỡng.');
+      const newCols = parseInt(columnsInput.value, 10); // Lấy giá trị cột
+      if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0 || isNaN(newCols) || newCols < 1 || newCols > 32) {
+        alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số cột 1-32).');
         return;
       }
       threshold = newT;
       threshold2 = newT2;
-    
-      chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2 });
+      columns = newCols;
+
+      // Lưu thêm iconColumns
+      chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2, iconColumns: columns });
     
       originalThreshold = threshold;
       originalThreshold2 = threshold2;
-    
+      originalColumns = columns;
+
       thresholdValue.textContent = String(threshold).replace('.', ',');
       threshold2Value.textContent = String(threshold2).replace('.', ',');
-    
+      columnsValue.textContent = columns;
+
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
       thresholdSummary.style.display = 'inline';
       threshold2Input.disabled = true;
       threshold2Input.style.display = 'none';
       threshold2Summary.style.display = 'inline';
+      columnsInput.disabled = true;
+      columnsInput.style.display = 'none';
+      columnsSummary.style.display = 'inline';
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
       cancelBtn.style.display = 'none';
@@ -198,13 +218,17 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', () => {
       thresholdInput.value = originalThreshold;
       threshold2Input.value = originalThreshold2;
-      
+      columnsInput.value = originalColumns;
+
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
       thresholdSummary.style.display = 'inline';
       threshold2Input.disabled = true;
       threshold2Input.style.display = 'none';
       threshold2Summary.style.display = 'inline';
+      columnsInput.disabled = true;
+      columnsInput.style.display = 'none';
+      columnsSummary.style.display = 'inline';
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
       cancelBtn.style.display = 'none';

@@ -1,11 +1,12 @@
 /**
  * High Tide Alert - Background Service Worker
- * Vẽ icon 5 cột động (T đến T+4) dựa trên mực nước thủy triều
+ * Vẽ icon động dựa trên mực nước thủy triều và số cột tùy chỉnh
  */
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
 const DEFAULT_THRESHOLD = 1.5;
 const DEFAULT_THRESHOLD2 = 2.0;
+const DEFAULT_COLUMNS = 12;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('updateIconAlarm', { periodInMinutes: 5 });
@@ -13,7 +14,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'local' && (changes.tideThreshold || changes.tideThreshold2)) {
+  if (namespace === 'local' && (changes.tideThreshold || changes.tideThreshold2 || changes.iconColumns)) {
     updateDynamicIcon();
   }
 });
@@ -62,7 +63,6 @@ function parseTideTables(html, maxTables = 3) {
     }
 
     if (date && entries.length) {
-      // Cấu trúc dữ liệu hợp nhất cho cả background (entries) và popup (labels, data)
       result.push({ date, entries, labels, data });
     }
   }
@@ -77,7 +77,7 @@ function getTodayString() {
   });
 }
 
-function drawExtensionIcon(tables, threshold, threshold2) {
+function drawExtensionIcon(tables, threshold, threshold2, columns) {
   const flatData = [];
   tables.forEach(t => {
     t.entries.forEach(e => {
@@ -92,7 +92,7 @@ function drawExtensionIcon(tables, threshold, threshold2) {
   const targetLevels = [];
 
   if (currentIndex !== -1) {
-    for (let i = currentIndex; i <= currentIndex + 4; i++) {
+    for (let i = currentIndex; i <= currentIndex + (columns - 1); i++) {
       if (i >= 0 && i < flatData.length) {
         targetLevels.push(flatData[i].level);
       } else {
@@ -100,16 +100,21 @@ function drawExtensionIcon(tables, threshold, threshold2) {
       }
     }
   } else {
-    targetLevels.push(0, 0, 0, 0, 0);
+    targetLevels.push(...Array(columns).fill(0));
   }
 
   const canvas = new OffscreenCanvas(32, 32);
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, 32, 32);
+  
+  // Vẽ nền trắng
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, 32, 32);
 
   const maxUsableHeight = 29;
-  const colWidth = 5.6;
-  const gap = 1;
+  
+  // Tự động tính toán chiều rộng cột dựa trên số lượng cột
+  const colWidth = 32 / columns; 
+  const gap = 0;
   const startX = 0;
 
   targetLevels.forEach((level, idx) => {
@@ -157,15 +162,15 @@ function updateDynamicIcon() {
       return res.text();
     })
     .then((html) => {
-      chrome.storage.local.get(['tideThreshold', 'tideThreshold2'], (result) => {
+      chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'iconColumns'], (result) => {
         const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
         const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
-        const tables = parseTideTables(html, 4); 
+        const columns = parseInt(result.iconColumns ?? DEFAULT_COLUMNS, 10);
         
-        // Single Source of Truth: Lưu cấu trúc hoàn chỉnh vào Local Storage
+        const tables = parseTideTables(html, 4); 
         chrome.storage.local.set({ tideData: tables });
         
-        drawExtensionIcon(tables, threshold, threshold2);
+        drawExtensionIcon(tables, threshold, threshold2, columns);
       });
     })
     .catch((err) => {
