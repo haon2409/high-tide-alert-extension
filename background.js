@@ -107,7 +107,7 @@ function drawExtensionIcon(tables, threshold, threshold2, columns) {
   const ctx = canvas.getContext('2d');
   
   // Vẽ nền trắng
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = '#1f1f1f';
   ctx.fillRect(0, 0, 32, 32);
 
   const maxUsableHeight = 29;
