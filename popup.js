@@ -6,6 +6,7 @@
 const DEFAULT_THRESHOLD = 1.5;
 const DEFAULT_THRESHOLD2 = 2.0;
 const DEFAULT_COLUMNS = 12;
+const DEFAULT_DAYS = 4;
 
 document.addEventListener('DOMContentLoaded', () => {
   const tideInfo = document.getElementById('tide-info');
@@ -22,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const columnsInput = document.getElementById('columns-input');
   const columnsSummary = document.getElementById('columns-summary');
   const columnsValue = document.getElementById('columns-value');
+  const daysInput = document.getElementById('days-input');
+  const daysSummary = document.getElementById('days-summary');
+  const daysValue = document.getElementById('days-value');
 
   let chartInstances = []; // Quản lý bộ nhớ các instance biểu đồ
 
@@ -81,19 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const annotations = {
       thresholdLine: {
         type: 'line', yMin: threshold, yMax: threshold,
-        borderColor: '#d32f2f', borderWidth: 2, borderDash: [5, 5],
-        label: {
-          display: true, content: `Đỏ: ${threshold}m`, position: 'end',
-          backgroundColor: 'rgba(211,47,47,0.85)', color: '#fff', padding: 3, font: { size: 10 }
-        }
+        borderColor: '#d32f2f', borderWidth: 2, borderDash: [5, 5]
       },
       threshold2Line: {
         type: 'line', yMin: threshold2, yMax: threshold2,
-        borderColor: '#ff8f00', borderWidth: 2, borderDash: [5, 5],
-        label: {
-          display: true, content: `Vàng: ${threshold2}m`, position: 'end',
-          backgroundColor: 'rgba(255,143,0,0.85)', color: '#fff', padding: 3, font: { size: 10 }
-        }
+        borderColor: '#ff8f00', borderWidth: 2, borderDash: [5, 5]
       }
     };
 
@@ -143,14 +139,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  chrome.storage.local.get(['tideThreshold', 'tideThreshold2'], (result) => {
+  chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'iconColumns', 'tideDays'], (result) => {
     let threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
     let threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
-    let columns = parseInt(result.iconColumns ?? DEFAULT_COLUMNS, 10); // Thêm biến columns
+    let columns = parseInt(result.iconColumns ?? DEFAULT_COLUMNS, 10);
+    let days = parseInt(result.tideDays ?? DEFAULT_DAYS, 10);
 
     let originalThreshold = threshold;
     let originalThreshold2 = threshold2;
-    let originalColumns = columns; // Lưu giá trị gốc
+    let originalColumns = columns;
+    let originalDays = days;
 
     thresholdInput.value = threshold;
     thresholdValue.textContent = String(threshold).replace('.', ',');
@@ -158,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
     threshold2Value.textContent = String(threshold2).replace('.', ',');
     columnsInput.value = columns;
     columnsValue.textContent = columns;
+    daysInput.value = days;
+    daysValue.textContent = days;
 
     editBtn.addEventListener('click', () => {
       thresholdInput.disabled = false;
@@ -169,6 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
       columnsInput.disabled = false;
       columnsInput.style.display = 'inline';
       columnsSummary.style.display = 'none';
+      daysInput.disabled = false;
+      daysInput.style.display = 'inline';
+      daysSummary.style.display = 'none';
 
       editBtn.style.display = 'none';
       saveBtn.style.display = 'inline';
@@ -179,25 +182,28 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', () => {
       const newT = parseFloat(thresholdInput.value);
       const newT2 = parseFloat(threshold2Input.value);
-      const newCols = parseInt(columnsInput.value, 10); // Lấy giá trị cột
-      if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0 || isNaN(newCols) || newCols < 1 || newCols > 32) {
-        alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số cột 1-32).');
+      const newCols = parseInt(columnsInput.value, 10);
+      const newDays = parseInt(daysInput.value, 10);
+      if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0 || isNaN(newCols) || newCols < 1 || newCols > 32 || isNaN(newDays) || newDays < 1 || newDays > 7) {
+        alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số cột 1-32, Số ngày 1-7).');
         return;
       }
       threshold = newT;
       threshold2 = newT2;
       columns = newCols;
+      days = newDays;
 
-      // Lưu thêm iconColumns
-      chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2, iconColumns: columns });
+      chrome.storage.local.set({ tideThreshold: threshold, tideThreshold2: threshold2, iconColumns: columns, tideDays: days });
     
       originalThreshold = threshold;
       originalThreshold2 = threshold2;
       originalColumns = columns;
+      originalDays = days;
 
       thresholdValue.textContent = String(threshold).replace('.', ',');
       threshold2Value.textContent = String(threshold2).replace('.', ',');
       columnsValue.textContent = columns;
+      daysValue.textContent = days;
 
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
@@ -208,6 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
       columnsInput.disabled = true;
       columnsInput.style.display = 'none';
       columnsSummary.style.display = 'inline';
+      daysInput.disabled = true;
+      daysInput.style.display = 'none';
+      daysSummary.style.display = 'inline';
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
       cancelBtn.style.display = 'none';
@@ -219,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
       thresholdInput.value = originalThreshold;
       threshold2Input.value = originalThreshold2;
       columnsInput.value = originalColumns;
+      daysInput.value = originalDays;
 
       thresholdInput.disabled = true;
       thresholdInput.style.display = 'none';
@@ -229,6 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
       columnsInput.disabled = true;
       columnsInput.style.display = 'none';
       columnsSummary.style.display = 'inline';
+      daysInput.disabled = true;
+      daysInput.style.display = 'none';
+      daysSummary.style.display = 'inline';
       editBtn.style.display = 'inline';
       saveBtn.style.display = 'none';
       cancelBtn.style.display = 'none';

@@ -7,6 +7,7 @@ const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
 const DEFAULT_THRESHOLD = 1.5;
 const DEFAULT_THRESHOLD2 = 2.0;
 const DEFAULT_COLUMNS = 12;
+const DEFAULT_DAYS = 4;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('updateIconAlarm', { periodInMinutes: 5 });
@@ -14,7 +15,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'local' && (changes.tideThreshold || changes.tideThreshold2 || changes.iconColumns)) {
+  if (namespace === 'local' && (changes.tideThreshold || changes.tideThreshold2 || changes.iconColumns || changes.tideDays)) {
     updateDynamicIcon();
   }
 });
@@ -25,7 +26,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-function parseTideTables(html, maxTables = 3) {
+function parseTideTables(html, maxTables = DEFAULT_DAYS) {
   const result = [];
   const tableRegex = /<table class="table table-striped">[\s\S]*?<\/table>/g;
   const tables = html.match(tableRegex) || [];
@@ -162,12 +163,13 @@ function updateDynamicIcon() {
       return res.text();
     })
     .then((html) => {
-      chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'iconColumns'], (result) => {
+      chrome.storage.local.get(['tideThreshold', 'tideThreshold2', 'iconColumns', 'tideDays'], (result) => {
         const threshold = parseFloat(result.tideThreshold ?? DEFAULT_THRESHOLD);
         const threshold2 = parseFloat(result.tideThreshold2 ?? DEFAULT_THRESHOLD2);
         const columns = parseInt(result.iconColumns ?? DEFAULT_COLUMNS, 10);
+        const days = parseInt(result.tideDays ?? DEFAULT_DAYS, 10);
         
-        const tables = parseTideTables(html, 4); 
+        const tables = parseTideTables(html, days); 
         chrome.storage.local.set({ tideData: tables });
         
         drawExtensionIcon(tables, threshold, threshold2, columns);
