@@ -15,7 +15,7 @@ const PROXIES = [
 const DEFAULTS = {
   threshold: 3.9,
   threshold2: 3.4,
-  days: 7
+  days: 10
 };
 
 let chartInstances = [];
@@ -39,7 +39,7 @@ function saveSettings(settings) {
 }
 
 // ===== Parse HTML =====
-function parseTideTables(html, maxTables = 7) {
+function parseTideTables(html, maxTables = 10) {
   const result = [];
   const tableRegex = /<table class="table table-striped">[\s\S]*?<\/table>/g;
   const tables = html.match(tableRegex) || [];
@@ -55,7 +55,8 @@ function parseTideTables(html, maxTables = 7) {
       const text = match[1].trim();
       if (/Dương lịch \d{2}\/\d{2}\/\d{4}/.test(text)) {
         date = text.replace('Dương lịch ', '');
-      } else if (/^\d{1,2}h$/.test(text) || /^\d+\.\d+m$/.test(text) || /^\d+,\d+m$/.test(text)) {
+      } else if (/^\d{1,2}h$/.test(text) || /^\d+[.,]\d+m$/.test(text)) {
+        // Hỗ trợ cả dấu chấm và dấu phẩy
         tideData.push(text.replace(',', '.'));
       }
     }
@@ -282,8 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const days = parseInt(document.getElementById('days').value, 10);
 
     if (isNaN(threshold) || threshold < 0 || isNaN(threshold2) || threshold2 < 0 ||
-        isNaN(days) || days < 1 || days > 7) {
-      alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số ngày 1-7).');
+        isNaN(days) || days < 1 || days > 14) {
+      alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số ngày 1-14).');
       return;
     }
 
