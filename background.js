@@ -4,10 +4,10 @@
  */
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
-const DEFAULT_THRESHOLD = 1.5;
-const DEFAULT_THRESHOLD2 = 2.0;
+const DEFAULT_THRESHOLD = 3.9;
+const DEFAULT_THRESHOLD2 = 3.4;
 const DEFAULT_COLUMNS = 12;
-const DEFAULT_DAYS = 4;
+const DEFAULT_DAYS = 7;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('updateIconAlarm', { periodInMinutes: 5 });
@@ -107,7 +107,7 @@ function drawExtensionIcon(tables, threshold, threshold2, columns) {
   const canvas = new OffscreenCanvas(32, 32);
   const ctx = canvas.getContext('2d');
   
-  // Vẽ nền trắng
+  // Vẽ nền
   ctx.fillStyle = '#1f1f1f';
   ctx.fillRect(0, 0, 32, 32);
 

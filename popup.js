@@ -3,10 +3,10 @@
  * Hiển thị biểu đồ mực nước + cấu hình ngưỡng
  */
 
-const DEFAULT_THRESHOLD = 1.5;
-const DEFAULT_THRESHOLD2 = 2.0;
+const DEFAULT_THRESHOLD = 3.9;
+const DEFAULT_THRESHOLD2 = 3.4;
 const DEFAULT_COLUMNS = 12;
-const DEFAULT_DAYS = 4;
+const DEFAULT_DAYS = 7;
 
 document.addEventListener('DOMContentLoaded', () => {
   const tideInfo = document.getElementById('tide-info');
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const daysSummary = document.getElementById('days-summary');
   const daysValue = document.getElementById('days-value');
 
-  let chartInstances = []; // Quản lý bộ nhớ các instance biểu đồ
+  let chartInstances = [];
 
   if (typeof Chart === 'undefined') {
     tideInfo.textContent = 'Lỗi: Không thể tải Chart.js.';
@@ -113,19 +113,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Lưu instance để dọn dẹp sau
     chartInstances.push(newChart);
   }
 
   function loadTideData(threshold, threshold2) {
     statusEl.textContent = 'Đang đọc dữ liệu...';
     
-    // Hủy các biểu đồ cũ trước khi render lại để tránh lỗi đè (flickering)
     chartInstances.forEach(chart => chart.destroy());
     chartInstances = [];
     tideInfo.innerHTML = '';
 
-    // Lấy dữ liệu đã được parse sẵn từ background
     chrome.storage.local.get(['tideData'], (result) => {
       const tables = result.tideData;
       if (!tables || !tables.length) {

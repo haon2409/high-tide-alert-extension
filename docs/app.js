@@ -5,7 +5,7 @@
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
 
-// Danh sách proxy dự phòng (thử lần lượt)
+// Danh sách proxy dự phòng
 const PROXIES = [
   'https://corsproxy.io/?',
   'https://proxy.cors.dev/',
@@ -13,9 +13,9 @@ const PROXIES = [
 ];
 
 const DEFAULTS = {
-  threshold: 1.5,
-  threshold2: 2.0,
-  days: 4
+  threshold: 3.9,
+  threshold2: 3.4,
+  days: 7
 };
 
 let chartInstances = [];
@@ -39,7 +39,7 @@ function saveSettings(settings) {
 }
 
 // ===== Parse HTML =====
-function parseTideTables(html, maxTables = 4) {
+function parseTideTables(html, maxTables = 7) {
   const result = [];
   const tableRegex = /<table class="table table-striped">[\s\S]*?<\/table>/g;
   const tables = html.match(tableRegex) || [];
@@ -224,7 +224,7 @@ async function fetchWithProxy(url) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       if (text.includes('table table-striped') || text.includes('Dương lịch')) {
-        return text; // thành công
+        return text;
       }
       throw new Error('Nội dung không hợp lệ');
     } catch (err) {
@@ -266,7 +266,7 @@ async function loadTideData() {
     updateCurrentLevel(tables, settings.threshold, settings.threshold2);
   } catch (err) {
     console.error(err);
-    statusEl.textContent = 'Lỗi tải dữ liệu (proxy). Hãy thử nút Làm mới hoặc đợi ít phút.';
+    statusEl.textContent = 'Lỗi tải dữ liệu (proxy). Hãy thử lại sau.';
   }
 }
 
@@ -291,6 +291,5 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTideData();
   });
 
-  document.getElementById('refresh-btn').addEventListener('click', loadTideData);
   loadTideData();
 });

@@ -80,7 +80,6 @@
     #cancel-btn:hover { background: #616161; }
     #tide-info {
       max-height: 480px;
-      /* overflow-y: auto; */
       font-size: 13px;
     }
     #status {
@@ -93,8 +92,8 @@
 <body>
   <div id="threshold-container">
     <span>Ngưỡng đỏ (nguy hiểm):</span>
-    <span id="threshold-summary"><span id="threshold-value">1,5</span> m</span>
-    <input type="number" id="threshold-input" min="0" step="0.1" value="1.5" style="display:none" disabled>
+    <span id="threshold-summary"><span id="threshold-value">3,9</span> m</span>
+    <input type="number" id="threshold-input" min="0" step="0.1" value="3.9" style="display:none" disabled>
     <button id="edit-btn" title="Chỉnh sửa">⚙️</button>
     <button id="save-btn">Lưu</button>
     <button id="cancel-btn">Hủy</button>
@@ -102,8 +101,8 @@
 
   <div id="threshold2-container">
     <span>Ngưỡng vàng (cảnh báo):</span>
-    <span id="threshold2-summary"><span id="threshold2-value">2,0</span> m</span>
-    <input type="number" id="threshold2-input" min="0" step="0.1" value="2.0" style="display:none" disabled>
+    <span id="threshold2-summary"><span id="threshold2-value">3,4</span> m</span>
+    <input type="number" id="threshold2-input" min="0" step="0.1" value="3.4" style="display:none" disabled>
   </div>
 
   <div id="columns-container" style="margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; background: rgba(255,255,255,0.92); padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
@@ -114,8 +113,8 @@
 
   <div id="days-container" style="margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; background: rgba(255,255,255,0.92); padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
     <span>Số ngày dữ liệu (1-7):</span>
-    <span id="days-summary" style="color: #0288d1; font-weight: 700;"><span id="days-value">4</span></span>
-    <input type="number" id="days-input" min="1" max="7" step="1" value="4" style="display:none; width: 56px; padding: 4px 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;" disabled>
+    <span id="days-summary" style="color: #0288d1; font-weight: 700;"><span id="days-value">7</span></span>
+    <input type="number" id="days-input" min="1" max="7" step="1" value="7" style="display:none; width: 56px; padding: 4px 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;" disabled>
   </div>
   
   <div id="status"></div>
