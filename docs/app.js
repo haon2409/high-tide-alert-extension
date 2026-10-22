@@ -4,8 +4,13 @@
  */
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
-// Proxy để bypass CORS (có thể thay đổi nếu proxy chết)
-const PROXY_URL = 'https://proxy.cors.dev/';
+
+// Danh sách proxy dự phòng (thử lần lượt)
+const PROXIES = [
+  'https://corsproxy.io/?',
+  'https://proxy.cors.dev/',
+  'https://api.codetabs.com/v1/proxy?quest='
+];
 
 const DEFAULTS = {
   threshold: 1.5,
@@ -121,12 +126,20 @@ function renderChart(container, { date, labels, data }, index, threshold, thresh
 
   const annotations = {
     thresholdLine: {
-      type: 'line', yMin: threshold, yMax: threshold,
-      borderColor: '#d32f2f', borderWidth: 2, borderDash: [5, 5]
+      type: 'line',
+      yMin: threshold,
+      yMax: threshold,
+      borderColor: '#d32f2f',
+      borderWidth: 2,
+      borderDash: [5, 5]
     },
     threshold2Line: {
-      type: 'line', yMin: threshold2, yMax: threshold2,
-      borderColor: '#ff8f00', borderWidth: 2, borderDash: [5, 5]
+      type: 'line',
+      yMin: threshold2,
+      yMax: threshold2,
+      borderColor: '#ff8f00',
+      borderWidth: 2,
+      borderDash: [5, 5]
     }
   };
 
@@ -200,6 +213,28 @@ function updateCurrentLevel(tables, threshold, threshold2) {
   }
 }
 
+// ===== Fetch with fallback proxies =====
+async function fetchWithProxy(url) {
+  let lastError = null;
+
+  for (const proxy of PROXIES) {
+    try {
+      const fullUrl = proxy + encodeURIComponent(url);
+      const res = await fetch(fullUrl, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      if (text.includes('table table-striped') || text.includes('Dương lịch')) {
+        return text; // thành công
+      }
+      throw new Error('Nội dung không hợp lệ');
+    } catch (err) {
+      lastError = err;
+      console.warn('Proxy fail:', proxy, err.message);
+    }
+  }
+  throw lastError || new Error('Tất cả proxy đều lỗi');
+}
+
 // ===== Main load =====
 async function loadTideData() {
   const statusEl = document.getElementById('status');
@@ -216,9 +251,7 @@ async function loadTideData() {
   tideInfo.innerHTML = '';
 
   try {
-    const res = await fetch(PROXY_URL + encodeURIComponent(TIDE_URL));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
+    const html = await fetchWithProxy(TIDE_URL);
 
     const tables = parseTideTables(html, settings.days);
     if (!tables.length) {
@@ -233,7 +266,7 @@ async function loadTideData() {
     updateCurrentLevel(tables, settings.threshold, settings.threshold2);
   } catch (err) {
     console.error(err);
-    statusEl.textContent = 'Lỗi tải dữ liệu (có thể do proxy). Hãy thử nút Làm mới hoặc kiểm tra kết nối.';
+    statusEl.textContent = 'Lỗi tải dữ liệu (proxy). Hãy thử nút Làm mới hoặc đợi ít phút.';
   }
 }
 
