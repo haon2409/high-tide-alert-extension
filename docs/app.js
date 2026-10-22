@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isNaN(threshold) || threshold < 0 || isNaN(threshold2) || threshold2 < 0 ||
         isNaN(days) || days < 1 || days > 14) {
-      alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số ngày 1-14).');
+      alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số ngày 1-14)');
       return;
     }
 
