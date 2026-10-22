@@ -6,7 +6,7 @@
 const DEFAULT_THRESHOLD = 3.9;
 const DEFAULT_THRESHOLD2 = 3.4;
 const DEFAULT_COLUMNS = 12;
-const DEFAULT_DAYS = 7;
+const DEFAULT_DAYS = 10;
 
 document.addEventListener('DOMContentLoaded', () => {
   const tideInfo = document.getElementById('tide-info');
@@ -181,8 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const newT2 = parseFloat(threshold2Input.value);
       const newCols = parseInt(columnsInput.value, 10);
       const newDays = parseInt(daysInput.value, 10);
-      if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0 || isNaN(newCols) || newCols < 1 || newCols > 32 || isNaN(newDays) || newDays < 1 || newDays > 7) {
-        alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số cột 1-32, Số ngày 1-7).');
+      if (isNaN(newT) || newT < 0 || isNaN(newT2) || newT2 < 0 || isNaN(newCols) || newCols < 1 || newCols > 32 || isNaN(newDays) || newDays < 1 || newDays > 14) {
+        alert('Vui lòng nhập thông số hợp lệ (Ngưỡng ≥ 0, Số cột 1-32, Số ngày 1-14).');
         return;
       }
       threshold = newT;

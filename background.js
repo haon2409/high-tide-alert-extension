@@ -7,7 +7,7 @@ const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
 const DEFAULT_THRESHOLD = 3.9;
 const DEFAULT_THRESHOLD2 = 3.4;
 const DEFAULT_COLUMNS = 12;
-const DEFAULT_DAYS = 7;
+const DEFAULT_DAYS = 10;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('updateIconAlarm', { periodInMinutes: 5 });
@@ -42,8 +42,9 @@ function parseTideTables(html, maxTables = DEFAULT_DAYS) {
       const text = match[1].trim();
       if (/Dương lịch \d{2}\/\d{2}\/\d{4}/.test(text)) {
         date = text.replace('Dương lịch ', '');
-      } else if (/^\d{1,2}h$/.test(text) || /^\d+\.\d+m$/.test(text)) {
-        tideData.push(text);
+      } else if (/^\d{1,2}h$/.test(text) || /^\d+[.,]\d+m$/.test(text)) {
+        // Hỗ trợ cả dấu chấm (1.4m) và dấu phẩy (1,4m)
+        tideData.push(text.replace(',', '.'));
       }
     }
 
@@ -107,13 +108,10 @@ function drawExtensionIcon(tables, threshold, threshold2, columns) {
   const canvas = new OffscreenCanvas(32, 32);
   const ctx = canvas.getContext('2d');
   
-  // Vẽ nền
   ctx.fillStyle = '#1f1f1f';
   ctx.fillRect(0, 0, 32, 32);
 
   const maxUsableHeight = 29;
-  
-  // Tự động tính toán chiều rộng cột dựa trên số lượng cột
   const colWidth = 32 / columns; 
   const gap = 0;
   const startX = 0;
