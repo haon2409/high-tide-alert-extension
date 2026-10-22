@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>High Tide Alert - Sài Gòn</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #e0f7fa 0%, #499f7b 100%);
+      color: #333;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+    }
+    h1 { font-size: 1.5rem; color: #01579b; display: flex; align-items: center; gap: 8px; }
+    .current-level {
+      background: #fff; padding: 10px 16px; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); font-weight: 700; font-size: 1.1rem;
+    }
+    .current-level.high { color: #d32f2f; }
+    .current-level.medium { color: #ff8f00; }
+    .current-level.low { color: #0288d1; }
+    .settings {
+      background: rgba(255,255,255,0.95); padding: 14px; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px;
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    }
+    .settings label { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    .settings input[type="number"] {
+      width: 64px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    }
+    .settings input:focus { border-color: #0288d1; outline: none; }
+    button {
+      background: #0288d1; color: #fff; border: none; padding: 8px 16px;
+      border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s;
+    }
+    button:hover { background: #0277bd; }
+    button.secondary { background: #fff; color: #0288d1; border: 1px solid #0288d1; }
+    button.secondary:hover { background: #e3f2fd; }
+    #status { font-size: 14px; color: #555; margin: 8px 0 12px; min-height: 20px; }
+    .date { font-weight: 700; margin-top: 20px; font-size: 16px; color: #0277bd; }
+    .date-value { color: #0288d1; }
+    .tide-chart {
+      margin: 10px 0 20px; background: #fff; padding: 12px;
+      border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    footer { text-align: center; margin-top: 32px; font-size: 13px; color: #555; }
+    footer a { color: #0277bd; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🌊 High Tide Alert – Sài Gòn</h1>
+      <div id="current-level" class="current-level">--</div>
+    </header>
+
+    <div class="settings">
+      <label>
+        Ngưỡng đỏ (nguy hiểm):
+        <input type="number" id="threshold" min="0" step="0.1" value="1.5"> m
+      </label>
+      <label>
+        Ngưỡng vàng (cảnh báo):
+        <input type="number" id="threshold2" min="0" step="0.1" value="2.0"> m
+      </label>
+      <label>
+        Số ngày:
+        <input type="number" id="days" min="1" max="7" step="1" value="4">
+      </label>
+      <button id="save-btn">Lưu & Cập nhật</button>
+      <button id="refresh-btn" class="secondary">🔄 Làm mới</button>
+    </div>
+
+    <div id="status">Đang tải dữ liệu...</div>
+    <div id="tide-info"></div>
+
+    <footer>
+      Nguồn dữ liệu: <a href="https://thegioimoicau.com/dia-danh/sai-gon/trang-1" target="_blank" rel="noopener">thegioimoicau.com</a> · 
+      <a href="https://github.com/haon2409/high-tide-alert-extension" target="_blank" rel="noopener">GitHub</a>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
