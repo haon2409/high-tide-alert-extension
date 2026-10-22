@@ -5,7 +5,7 @@
 
 const TIDE_URL = 'https://thegioimoicau.com/dia-danh/sai-gon/trang-1';
 // Proxy để bypass CORS (có thể thay đổi nếu proxy chết)
-const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+const PROXY_URL = 'https://proxy.cors.dev/';
 
 const DEFAULTS = {
   threshold: 1.5,
